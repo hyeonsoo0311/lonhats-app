@@ -1,0 +1,52 @@
+{
+  "name": "better-today",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@supabase/supabase-js": "^2.106.2",
+    "@tanstack/react-query": "^5.100.14",
+    "date-fns": "^4.3.0",
+    "expo": "~56.0.6",
+    "expo-constants": "~56.0.16",
+    "expo-haptics": "~56.0.3",
+    "expo-linear-gradient": "~56.0.4",
+    "expo-linking": "~56.0.12",
+    "expo-router": "~56.2.7",
+    "expo-status-bar": "~56.0.4",
+    "expo-system-ui": "~56.0.5",
+    "lucide-react-native": "^1.17.0",
+    "react": "19.2.3",
+    "react-native": "0.85.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "4.25.2",
+    "react-native-svg": "15.15.4",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@types/react": "~19.2.2",
+    "eslint": "^9.39.4",
+    "eslint-config-expo": "^56.0.4",
+    "prettier": "^3.8.3",
+    "tsx": "^4.22.3",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.7"
+  },
+  "scripts": {
+    "start": "expo start",
+    "start:clear": "expo start --clear",
+    "start:tunnel": "expo start --tunnel",
+    "start:go": "expo start --go",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "private": true
+}
