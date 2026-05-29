@@ -1,12 +1,26 @@
-import { AppCard, MetricCard, Pill, ScreenSection } from "@/components/ui";
+import { AppCard, EmptyState, MetricCard, Pill, ScreenSection } from "@/components/ui";
 import { colors, spacing } from "@/constants/theme";
-import { weekDays } from "@/data/mock-data";
+import { useAuth } from "@/contexts/auth-context";
 import { analyzeWeek } from "@/lib/analysis";
+import { getWeeklyDaySummaries } from "@/lib/database";
+import { useQuery } from "@tanstack/react-query";
 import { Activity, Flame, TimerReset } from "lucide-react-native";
 import { ScrollView, Text, View } from "react-native";
 
 export default function InsightsScreen() {
-  const analysis = analyzeWeek({ goalMode: "cut", dailyCalorieTarget: 2050, days: weekDays });
+  const { profile, user } = useAuth();
+  const userId = user?.id ?? "";
+  const summariesQuery = useQuery({
+    queryKey: ["weekly-summary", userId],
+    queryFn: () => getWeeklyDaySummaries(userId),
+    enabled: Boolean(userId)
+  });
+  const days = summariesQuery.data ?? [];
+  const analysis = analyzeWeek({
+    goalMode: profile?.goalMode ?? "maintain",
+    dailyCalorieTarget: profile?.dailyCalorieTarget ?? 2050,
+    days
+  });
 
   return (
     <ScrollView
@@ -36,41 +50,48 @@ export default function InsightsScreen() {
       </View>
 
       <ScreenSection title="주간 흐름">
-        <View style={{ gap: spacing.sm }}>
-          {weekDays.map((day) => (
-            <View
-              key={day.date}
-              style={{ alignItems: "center", flexDirection: "row", gap: spacing.sm }}
-            >
-              <Text
-                selectable
-                style={{ color: colors.ink, fontSize: 13, fontWeight: "900", width: 22 }}
-              >
-                {day.date}
-              </Text>
+        {days.some((day) => day.caloriesIn || day.workoutMinutes) ? (
+          <View style={{ gap: spacing.sm }}>
+            {days.map((day) => (
               <View
-                style={{
-                  backgroundColor: colors.mint,
-                  borderRadius: 999,
-                  flex: 1,
-                  height: 12,
-                  overflow: "hidden"
-                }}
+                key={day.date}
+                style={{ alignItems: "center", flexDirection: "row", gap: spacing.sm }}
               >
+                <Text
+                  selectable
+                  style={{ color: colors.ink, fontSize: 13, fontWeight: "900", width: 42 }}
+                >
+                  {day.date}
+                </Text>
                 <View
                   style={{
-                    backgroundColor: colors.moss,
+                    backgroundColor: colors.mint,
+                    borderRadius: 999,
+                    flex: 1,
                     height: 12,
-                    width: `${Math.min(day.workoutMinutes / 75, 1) * 100}%`
+                    overflow: "hidden"
                   }}
-                />
+                >
+                  <View
+                    style={{
+                      backgroundColor: colors.moss,
+                      height: 12,
+                      width: `${Math.min(day.workoutMinutes / 75, 1) * 100}%`
+                    }}
+                  />
+                </View>
+                <Text selectable style={{ color: colors.mutedInk, fontSize: 12, width: 42 }}>
+                  {day.workoutMinutes}분
+                </Text>
               </View>
-              <Text selectable style={{ color: colors.mutedInk, fontSize: 12, width: 42 }}>
-                {day.workoutMinutes}분
-              </Text>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        ) : (
+          <EmptyState
+            title="분석할 기록이 아직 부족합니다."
+            body="운동과 식단을 저장하면 주간 흐름이 채워집니다."
+          />
+        )}
       </ScreenSection>
 
       <ScreenSection title="다음 주 추천">

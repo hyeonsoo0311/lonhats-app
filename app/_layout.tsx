@@ -1,3 +1,4 @@
+import { AuthProvider } from "@/contexts/auth-context";
 import { queryClient } from "@/lib/query-client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import * as SystemUI from "expo-system-ui";
@@ -12,10 +13,14 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-      </Stack>
+      <AuthProvider>
+        <StatusBar style="dark" />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="sign-in" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="post/[postId]" />
+        </Stack>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

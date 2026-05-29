@@ -1,5 +1,17 @@
 export type GoalMode = "cut" | "maintain" | "gain";
 
+export type UserRole = "member" | "admin";
+
+export type Profile = {
+  id: string;
+  displayName: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+  role: UserRole;
+  goalMode: GoalMode;
+  dailyCalorieTarget: number | null;
+};
+
 export type Exercise = {
   id: string;
   name: string;
@@ -17,12 +29,87 @@ export type WorkoutSet = {
   minutes?: number;
 };
 
+export type WorkoutLog = {
+  id: string;
+  exerciseName: string;
+  trainedOn: string;
+  minutes: number | null;
+  setCount: number | null;
+  reps: number | null;
+  loadKg: number | null;
+  memo: string | null;
+};
+
 export type MealEntry = {
   name: string;
   calories: number;
   proteinGram: number;
   carbsGram: number;
   fatGram: number;
+};
+
+export type FoodItem = {
+  id: string;
+  name: string;
+  brandName: string | null;
+  servingGram: number;
+  caloriesPerServing: number;
+  proteinGram: number;
+  carbsGram: number;
+  fatGram: number;
+  source: string;
+  sourceId: string | null;
+};
+
+export type MealLog = {
+  id: string;
+  eatenOn: string;
+  mealType: string;
+  rawText: string;
+  foodName: string;
+  amountGram: number | null;
+  calories: number;
+  proteinGram: number;
+  carbsGram: number;
+  fatGram: number;
+  source: string | null;
+  confidence: number | null;
+};
+
+export type JournalEntry = {
+  id: string;
+  entryDate: string;
+  mood: string | null;
+  smallWin: string | null;
+  body: string | null;
+};
+
+export type CommunityPost = {
+  id: string;
+  title: string;
+  body: string;
+  channel: string;
+  authorId: string;
+  authorName: string | null;
+  upvoteCount: number;
+  commentCount: number;
+  createdAt: string;
+};
+
+export type CommunityComment = {
+  id: string;
+  postId: string;
+  body: string;
+  authorId: string;
+  authorName: string | null;
+  createdAt: string;
+};
+
+export type AppNotice = {
+  id: string;
+  title: string;
+  body: string;
+  priority: "normal" | "important";
 };
 
 export type DaySummary = {

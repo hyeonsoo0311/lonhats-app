@@ -1,15 +1,42 @@
-import { AppCard, Pill, PrimaryButton, ScreenSection } from "@/components/ui";
+import { AppCard, EmptyState, Field, Pill, PrimaryButton, ScreenSection } from "@/components/ui";
 import { colors, spacing } from "@/constants/theme";
+import { useAuth } from "@/contexts/auth-context";
 import { diaryPrompts } from "@/data/mock-data";
+import { getJournalEntries, saveJournalEntry } from "@/lib/database";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NotebookPen, Save } from "lucide-react-native";
 import { useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 const moods = ["담담함", "뿌듯함", "흔들림", "가벼움"];
 
 export default function ReflectScreen() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const userId = user?.id ?? "";
   const [mood, setMood] = useState("담담함");
-  const [entry, setEntry] = useState("오늘은 대단하진 않았지만 도망가지 않았다.");
+  const [smallWin, setSmallWin] = useState("도망가지 않았다.");
+  const [entry, setEntry] = useState("오늘은 대단하진 않았지만 다시 돌아왔다.");
+  const [error, setError] = useState("");
+
+  const entriesQuery = useQuery({
+    queryKey: ["journal", userId],
+    queryFn: () => getJournalEntries(userId),
+    enabled: Boolean(userId)
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: () => saveJournalEntry(userId, { mood, smallWin, body: entry }),
+    onSuccess: () => {
+      setError("");
+      queryClient.invalidateQueries({ queryKey: ["journal", userId] });
+    },
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof Error ? mutationError.message : "기록 저장에 실패했습니다."
+      );
+    }
+  });
 
   return (
     <ScrollView
@@ -44,25 +71,49 @@ export default function ReflectScreen() {
       </ScreenSection>
 
       <ScreenSection title="한 줄 일기">
-        <TextInput
-          multiline
-          value={entry}
-          onChangeText={setEntry}
-          placeholder="오늘의 나를 짧게 남겨주세요."
-          placeholderTextColor={colors.mutedInk}
-          style={{
-            backgroundColor: colors.white,
-            borderColor: colors.line,
-            borderRadius: 14,
-            borderWidth: 1,
-            color: colors.ink,
-            fontSize: 17,
-            minHeight: 132,
-            padding: spacing.md,
-            textAlignVertical: "top"
-          }}
-        />
-        <PrimaryButton icon={Save} label="오늘 기록 저장" />
+        <View style={{ gap: spacing.sm }}>
+          <Field value={smallWin} onChangeText={setSmallWin} placeholder="오늘의 작은 승리" />
+          <Field
+            multiline
+            value={entry}
+            onChangeText={setEntry}
+            placeholder="오늘의 나를 짧게 남겨주세요."
+          />
+          {error ? (
+            <Text selectable style={{ color: colors.danger, fontSize: 14, fontWeight: "800" }}>
+              {error}
+            </Text>
+          ) : null}
+          <PrimaryButton
+            disabled={saveMutation.isPending}
+            icon={Save}
+            label={saveMutation.isPending ? "저장 중" : "오늘 기록 저장"}
+            onPress={() => saveMutation.mutate()}
+          />
+        </View>
+      </ScreenSection>
+
+      <ScreenSection title="최근 기록">
+        {(entriesQuery.data ?? []).length ? (
+          (entriesQuery.data ?? []).map((item) => (
+            <AppCard key={item.id} tone="plain">
+              <Text selectable style={{ color: colors.ink, fontSize: 17, fontWeight: "900" }}>
+                {item.entryDate} · {item.mood}
+              </Text>
+              <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
+                {item.smallWin}
+              </Text>
+              <Text selectable style={{ color: colors.ink, fontSize: 14, lineHeight: 20 }}>
+                {item.body}
+              </Text>
+            </AppCard>
+          ))
+        ) : (
+          <EmptyState
+            title="아직 기록이 없습니다."
+            body="오늘의 한 줄을 저장하면 계정에 남습니다."
+          />
+        )}
       </ScreenSection>
     </ScrollView>
   );

@@ -1,6 +1,6 @@
 import { colors, radii, spacing } from "@/constants/theme";
 import type { ComponentProps, ReactNode } from "react";
-import { Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 
 type IconComponent = (props: { color?: string; size?: number; strokeWidth?: number }) => ReactNode;
 
@@ -109,19 +109,22 @@ export function MetricCard({
 export function PrimaryButton({
   label,
   icon: Icon,
-  onPress
+  onPress,
+  disabled = false
 }: {
   label: string;
   icon: IconComponent;
   onPress?: () => void;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
         alignItems: "center",
-        backgroundColor: pressed ? "#2F513D" : colors.moss,
+        backgroundColor: disabled ? colors.mutedInk : pressed ? "#2F513D" : colors.moss,
         borderRadius: radii.sm,
         flexDirection: "row",
         gap: spacing.sm,
@@ -134,6 +137,113 @@ export function PrimaryButton({
       <Icon color={colors.white} size={18} strokeWidth={2.4} />
       <Text style={{ color: colors.white, fontSize: 15, fontWeight: "800" }}>{label}</Text>
     </Pressable>
+  );
+}
+
+export function SecondaryButton({
+  label,
+  icon: Icon,
+  onPress,
+  disabled = false
+}: {
+  label: string;
+  icon: IconComponent;
+  onPress?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        alignItems: "center",
+        backgroundColor: pressed ? colors.line : colors.paper,
+        borderColor: colors.line,
+        borderRadius: radii.sm,
+        borderWidth: 1,
+        flexDirection: "row",
+        gap: spacing.sm,
+        justifyContent: "center",
+        minHeight: 48,
+        opacity: disabled ? 0.5 : pressed ? 0.88 : 1,
+        paddingHorizontal: spacing.md
+      })}
+    >
+      <Icon color={colors.ink} size={18} strokeWidth={2.4} />
+      <Text style={{ color: colors.ink, fontSize: 15, fontWeight: "800" }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+export function Field({
+  value,
+  onChangeText,
+  placeholder,
+  multiline = false,
+  secureTextEntry = false,
+  keyboardType = "default"
+}: {
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  multiline?: boolean;
+  secureTextEntry?: boolean;
+  keyboardType?: "default" | "email-address" | "numeric";
+}) {
+  return (
+    <TextInput
+      autoCapitalize={keyboardType === "email-address" ? "none" : "sentences"}
+      keyboardType={keyboardType}
+      multiline={multiline}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={colors.mutedInk}
+      secureTextEntry={secureTextEntry}
+      value={value}
+      style={{
+        backgroundColor: colors.white,
+        borderColor: colors.line,
+        borderRadius: radii.sm,
+        borderWidth: 1,
+        color: colors.ink,
+        fontSize: 16,
+        minHeight: multiline ? 112 : 52,
+        padding: spacing.md,
+        textAlignVertical: multiline ? "top" : "center"
+      }}
+    />
+  );
+}
+
+export function LoadingState({ label = "불러오는 중" }: { label?: string }) {
+  return (
+    <View
+      style={{
+        alignItems: "center",
+        backgroundColor: colors.canvas,
+        flex: 1,
+        gap: spacing.sm,
+        justifyContent: "center",
+        padding: spacing.lg
+      }}
+    >
+      <ActivityIndicator color={colors.moss} />
+      <Text style={{ color: colors.mutedInk, fontSize: 14, fontWeight: "800" }}>{label}</Text>
+    </View>
+  );
+}
+
+export function EmptyState({ title, body }: { title: string; body: string }) {
+  return (
+    <AppCard tone="plain">
+      <Text selectable style={{ color: colors.ink, fontSize: 17, fontWeight: "900" }}>
+        {title}
+      </Text>
+      <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
+        {body}
+      </Text>
+    </AppCard>
   );
 }
 

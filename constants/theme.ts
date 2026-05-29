@@ -10,6 +10,7 @@ export const colors = {
   blush: "#F4D2C6",
   amber: "#DCA642",
   sky: "#A7C7D9",
+  danger: "#B84032",
   white: "#FFFFFF"
 } as const;
 

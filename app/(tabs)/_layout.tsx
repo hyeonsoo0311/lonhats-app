@@ -1,6 +1,15 @@
+import { LoadingState } from "@/components/ui";
 import { colors } from "@/constants/theme";
-import { BookOpenText, ChartNoAxesColumn, Dumbbell, House, Utensils } from "lucide-react-native";
-import { Tabs } from "expo-router";
+import { useAuth } from "@/contexts/auth-context";
+import {
+  BookOpenText,
+  ChartNoAxesColumn,
+  Dumbbell,
+  House,
+  MessageSquareText,
+  Utensils
+} from "lucide-react-native";
+import { Redirect, Tabs } from "expo-router";
 import type { ColorValue } from "react-native";
 
 function createTabIcon(Icon: typeof House) {
@@ -14,6 +23,16 @@ function createTabIcon(Icon: typeof House) {
 }
 
 export default function TabLayout() {
+  const { loading, session } = useAuth();
+
+  if (loading) {
+    return <LoadingState label="세션 확인 중" />;
+  }
+
+  if (!session) {
+    return <Redirect href="/sign-in" />;
+  }
+
   return (
     <Tabs
       screenOptions={{
@@ -44,6 +63,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="reflect"
         options={{ title: "기록", tabBarLabel: "기록", tabBarIcon: createTabIcon(BookOpenText) }}
+      />
+      <Tabs.Screen
+        name="community"
+        options={{
+          title: "커뮤니티",
+          tabBarLabel: "커뮤니티",
+          tabBarIcon: createTabIcon(MessageSquareText)
+        }}
       />
       <Tabs.Screen
         name="insights"
