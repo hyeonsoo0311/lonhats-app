@@ -36,6 +36,10 @@ export default function TodayScreen() {
     (total, item) => total + (item.minutes ?? 0),
     0
   );
+  const caloriesOut = (workoutsQuery.data ?? []).reduce(
+    (total, item) => total + (item.estimatedCalories ?? 0),
+    0
+  );
   const calories = (mealsQuery.data ?? []).reduce((total, item) => total + item.calories, 0);
 
   return (
@@ -62,7 +66,7 @@ export default function TodayScreen() {
             icon={Trophy}
             label="운동"
             value={`${workoutMinutes}분`}
-            helper="오늘 저장된 운동"
+            helper={`예상 소모 ${caloriesOut}kcal`}
             tone="mint"
           />
         </View>

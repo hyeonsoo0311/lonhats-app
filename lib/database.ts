@@ -4,6 +4,7 @@ import type {
   CommunityComment,
   CommunityPost,
   DaySummary,
+  ExerciseActivity,
   FoodItem,
   GoalMode,
   JournalEntry,
@@ -34,6 +35,7 @@ function toProfile(row: DbRecord): Profile {
     avatarUrl: row.avatar_url ?? null,
     role: row.role ?? "member",
     goalMode: (row.goal_mode ?? "maintain") as GoalMode,
+    weightKg: row.weight_kg ?? null,
     dailyCalorieTarget: row.daily_calorie_target ?? null
   };
 }
@@ -41,13 +43,33 @@ function toProfile(row: DbRecord): Profile {
 function toWorkoutLog(row: DbRecord): WorkoutLog {
   return {
     id: row.id,
+    exerciseId: row.exercise_id ?? null,
     exerciseName: row.exercise_name,
+    exerciseCategory: row.exercise_category ?? null,
     trainedOn: row.trained_on,
     minutes: row.minutes ?? null,
     setCount: row.set_count ?? null,
     reps: row.reps ?? null,
     loadKg: row.load_kg ?? null,
+    metValue: row.met_value ?? null,
+    estimatedCalories: row.estimated_calories ?? null,
+    bodyWeightKg: row.body_weight_kg ?? null,
     memo: row.memo ?? null
+  };
+}
+
+function toExerciseActivity(row: DbRecord): ExerciseActivity {
+  return {
+    id: row.id,
+    slug: row.slug,
+    category: row.category,
+    name: row.name,
+    aliases: row.aliases ?? [],
+    metValue: Number(row.met_value ?? 1),
+    intensity: row.intensity,
+    defaultMinutes: row.default_minutes ?? 30,
+    description: row.description ?? "",
+    source: row.source ?? "Compendium of Physical Activities"
   };
 }
 
@@ -169,14 +191,35 @@ export async function getTodayWorkoutLogs(userId: string) {
   return (data ?? []).map(toWorkoutLog);
 }
 
+export async function getExerciseCatalog() {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("exercise_catalog")
+    .select("*")
+    .eq("is_active", true)
+    .order("category", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(toExerciseActivity);
+}
+
 export async function createWorkoutLog(
   userId: string,
   input: {
+    exerciseId?: string | null;
     exerciseName: string;
+    exerciseCategory?: string | null;
     minutes?: number | null;
     setCount?: number | null;
     reps?: number | null;
     loadKg?: number | null;
+    metValue?: number | null;
+    estimatedCalories?: number | null;
+    bodyWeightKg?: number | null;
     memo?: string | null;
   }
 ) {
@@ -185,12 +228,17 @@ export async function createWorkoutLog(
     .from("workout_logs")
     .insert({
       user_id: userId,
+      exercise_id: input.exerciseId,
       exercise_name: input.exerciseName,
+      exercise_category: input.exerciseCategory,
       trained_on: today(),
       minutes: input.minutes,
       set_count: input.setCount,
       reps: input.reps,
       load_kg: input.loadKg,
+      met_value: input.metValue,
+      estimated_calories: input.estimatedCalories,
+      body_weight_kg: input.bodyWeightKg,
       memo: input.memo
     })
     .select("*")
@@ -461,7 +509,7 @@ export async function getWeeklyDaySummaries(userId: string): Promise<DaySummary[
       .gte("eaten_on", startDate),
     client
       .from("workout_logs")
-      .select("trained_on, minutes")
+      .select("trained_on, minutes, estimated_calories")
       .eq("user_id", userId)
       .gte("trained_on", startDate)
   ]);
@@ -484,11 +532,14 @@ export async function getWeeklyDaySummaries(userId: string): Promise<DaySummary[
     const workoutMinutes = (workoutsResult.data ?? [])
       .filter((workout) => workout.trained_on === key)
       .reduce((sum, workout) => sum + Number(workout.minutes ?? 0), 0);
+    const caloriesOut = (workoutsResult.data ?? [])
+      .filter((workout) => workout.trained_on === key)
+      .reduce((sum, workout) => sum + Number(workout.estimated_calories ?? 0), 0);
 
     return {
       date: key.slice(5),
       caloriesIn,
-      caloriesOut: workoutMinutes * 6,
+      caloriesOut,
       workoutMinutes
     };
   });

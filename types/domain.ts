@@ -9,6 +9,7 @@ export type Profile = {
   avatarUrl: string | null;
   role: UserRole;
   goalMode: GoalMode;
+  weightKg: number | null;
   dailyCalorieTarget: number | null;
 };
 
@@ -31,13 +32,31 @@ export type WorkoutSet = {
 
 export type WorkoutLog = {
   id: string;
+  exerciseId: string | null;
   exerciseName: string;
+  exerciseCategory: string | null;
   trainedOn: string;
   minutes: number | null;
   setCount: number | null;
   reps: number | null;
   loadKg: number | null;
+  metValue: number | null;
+  estimatedCalories: number | null;
+  bodyWeightKg: number | null;
   memo: string | null;
+};
+
+export type ExerciseActivity = {
+  id: string;
+  slug: string;
+  category: "헬스" | "요가" | "필라테스" | "러닝" | "유산소" | "스포츠";
+  name: string;
+  aliases: string[];
+  metValue: number;
+  intensity: "light" | "moderate" | "vigorous";
+  defaultMinutes: number;
+  description: string;
+  source: string;
 };
 
 export type MealEntry = {

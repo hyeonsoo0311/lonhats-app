@@ -41,9 +41,9 @@ export default function InsightsScreen() {
         <View style={{ flex: 1 }}>
           <MetricCard
             icon={Activity}
-            label="평균 운동"
-            value={`${analysis.averageWorkoutMinutes}분`}
-            helper="day average"
+            label="평균 소모"
+            value={`${analysis.averageCaloriesOut}`}
+            helper={`${analysis.averageWorkoutMinutes}분 / day`}
             tone="mint"
           />
         </View>
