@@ -1,4 +1,5 @@
 import { createMealLog, searchFoodItems } from "@/lib/database";
+import { supabase } from "@/lib/supabase";
 import type { FoodItem, MealLog } from "@/types/domain";
 
 const unitPattern = /(\d+(?:\.\d+)?)\s*(g|그램|kg|킬로|ml|미리|공기|개|잔|스쿱|인분)/i;
@@ -37,9 +38,29 @@ function scoreFood(query: string, food: FoodItem) {
   return compactQuery.split("").filter((letter) => compactName.includes(letter)).length;
 }
 
+async function searchPublicNutritionApi(query: string) {
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase.functions.invoke<{ items: FoodItem[] }>("search-food", {
+    body: { query }
+  });
+
+  if (error) {
+    return [];
+  }
+
+  return data?.items ?? [];
+}
+
 export async function analyzeFoodInput(rawText: string) {
   const parsed = parseFoodText(rawText);
-  const foods = await searchFoodItems(parsed.query);
+  const [externalFoods, localFoods] = await Promise.all([
+    searchPublicNutritionApi(parsed.query),
+    searchFoodItems(parsed.query)
+  ]);
+  const foods = [...externalFoods, ...localFoods];
   const best = foods.sort((a, b) => scoreFood(parsed.query, b) - scoreFood(parsed.query, a))[0];
 
   if (!best) {
@@ -59,6 +80,7 @@ export async function analyzeFoodInput(rawText: string) {
     carbsGram: Math.round(best.carbsGram * ratio * 10) / 10,
     fatGram: Math.round(best.fatGram * ratio * 10) / 10,
     source: best.source,
+    sourceId: best.sourceId,
     confidence: Math.min(0.96, scoreFood(parsed.query, best) / 100)
   } satisfies Omit<MealLog, "id" | "eatenOn">;
 }

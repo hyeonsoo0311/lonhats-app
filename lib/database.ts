@@ -64,6 +64,7 @@ function toMealLog(row: DbRecord): MealLog {
     carbsGram: row.carbs_gram ?? 0,
     fatGram: row.fat_gram ?? 0,
     source: row.source ?? null,
+    sourceId: row.source_id ?? null,
     confidence: row.confidence ?? null
   };
 }
@@ -234,6 +235,7 @@ export async function createMealLog(userId: string, input: Omit<MealLog, "id" | 
       carbs_gram: input.carbsGram,
       fat_gram: input.fatGram,
       source: input.source,
+      source_id: input.sourceId,
       confidence: input.confidence
     })
     .select("*")

@@ -122,6 +122,20 @@ create unique index if not exists food_items_source_name_source_id_key
 
 alter table public.food_items enable row level security;
 
+create table if not exists public.secure_app_config (
+  name text primary key,
+  value text not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.secure_app_config enable row level security;
+revoke all on public.secure_app_config from anon, authenticated;
+
+drop policy if exists "secure_app_config_no_client_access" on public.secure_app_config;
+create policy "secure_app_config_no_client_access" on public.secure_app_config
+  for all using (false)
+  with check (false);
+
 drop policy if exists "food_items_read_authenticated" on public.food_items;
 create policy "food_items_read_authenticated" on public.food_items
   for select using ((select auth.uid()) is not null);

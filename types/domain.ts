@@ -73,6 +73,7 @@ export type MealLog = {
   carbsGram: number;
   fatGram: number;
   source: string | null;
+  sourceId: string | null;
   confidence: number | null;
 };
 
