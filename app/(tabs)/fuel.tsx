@@ -3,23 +3,35 @@ import {
   EmptyState,
   Field,
   MetricCard,
+  Pill,
   PrimaryButton,
   ScreenSection
 } from "@/components/ui";
 import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
-import { getTodayMealLogs } from "@/lib/database";
+import { createLifeEntry, getTodayLifeEntries, getTodayMealLogs } from "@/lib/database";
 import { analyzeAndSaveMeal } from "@/lib/food";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Beef, Flame, Plus, Wheat } from "lucide-react-native";
 import { useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
-export default function FuelScreen() {
+const mealTypes = ["아침", "점심", "저녁", "간식", "기타"];
+const rhythmScores = [
+  { label: "불규칙", value: 35 },
+  { label: "보통", value: 60 },
+  { label: "규칙적", value: 82 },
+  { label: "잘 챙김", value: 95 }
+];
+
+export default function MealScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const userId = user?.id ?? "";
+  const [mealType, setMealType] = useState("점심");
+  const [rhythm, setRhythm] = useState(rhythmScores[1]);
   const [rawText, setRawText] = useState("닭가슴살 150g");
+  const [meaning, setMeaning] = useState("몸을 비우지 않고 챙겼다.");
   const [error, setError] = useState("");
 
   const mealsQuery = useQuery({
@@ -27,22 +39,50 @@ export default function FuelScreen() {
     queryFn: () => getTodayMealLogs(userId),
     enabled: Boolean(userId)
   });
+  const entriesQuery = useQuery({
+    queryKey: ["today-life", userId],
+    queryFn: () => getTodayLifeEntries(userId),
+    enabled: Boolean(userId)
+  });
   const mealLogs = mealsQuery.data ?? [];
+  const mealEntries = (entriesQuery.data ?? []).filter((entry) => entry.stack === "meal");
   const calories = mealLogs.reduce((total, meal) => total + meal.calories, 0);
   const protein = Math.round(mealLogs.reduce((total, meal) => total + meal.proteinGram, 0));
   const carbs = Math.round(mealLogs.reduce((total, meal) => total + meal.carbsGram, 0));
 
   const createMutation = useMutation({
-    mutationFn: () => analyzeAndSaveMeal(userId, rawText),
+    mutationFn: async () => {
+      const meal = await analyzeAndSaveMeal(userId, rawText);
+      await createLifeEntry(userId, {
+        stack: "meal",
+        category: mealType,
+        title: `${mealType} · ${meal.foodName}`,
+        meaning: meaning.trim(),
+        note: rawText.trim(),
+        score: rhythm.value,
+        details: {
+          rhythm: rhythm.label,
+          calories: meal.calories,
+          proteinGram: meal.proteinGram,
+          carbsGram: meal.carbsGram,
+          fatGram: meal.fatGram,
+          source: meal.source,
+          sourceId: meal.sourceId
+        }
+      });
+      return meal;
+    },
     onSuccess: () => {
       setRawText("");
       setError("");
       queryClient.invalidateQueries({ queryKey: ["today-meals", userId] });
+      queryClient.invalidateQueries({ queryKey: ["today-life", userId] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-life", userId] });
       queryClient.invalidateQueries({ queryKey: ["weekly-summary", userId] });
     },
     onError: (mutationError) => {
       setError(
-        mutationError instanceof Error ? mutationError.message : "식단 저장에 실패했습니다."
+        mutationError instanceof Error ? mutationError.message : "Meal 기록 저장에 실패했습니다."
       );
     }
   });
@@ -50,6 +90,11 @@ export default function FuelScreen() {
   function handleSave() {
     if (!rawText.trim()) {
       setError("음식명을 입력해주세요.");
+      return;
+    }
+
+    if (!meaning.trim()) {
+      setError("오늘 식사의 의미를 남겨주세요.");
       return;
     }
 
@@ -66,9 +111,9 @@ export default function FuelScreen() {
         <View style={{ flex: 1 }}>
           <MetricCard
             icon={Flame}
-            label="칼로리"
+            label="섭취"
             value={`${calories}`}
-            helper="오늘 저장"
+            helper="오늘 kcal"
             tone="blush"
           />
         </View>
@@ -83,17 +128,37 @@ export default function FuelScreen() {
         </View>
       </View>
 
-      <ScreenSection title="식단 기록">
+      <ScreenSection title="Meal stack" action="식사 리듬">
         <View style={{ gap: spacing.sm }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+            {mealTypes.map((item) => (
+              <Pressable key={item} accessibilityRole="button" onPress={() => setMealType(item)}>
+                <Pill label={item} active={item === mealType} />
+              </Pressable>
+            ))}
+          </View>
           <Field
             value={rawText}
             onChangeText={setRawText}
             placeholder="예: 닭가슴살 150g, 현미밥 1공기"
           />
-          <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}>
-            현재는 앱 내부 음식 DB에서 자동 매칭합니다. 식약처 API 키가 연결되면 외부 DB 검색까지
-            확장됩니다.
-          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+            {rhythmScores.map((item) => (
+              <Pressable
+                key={item.label}
+                accessibilityRole="button"
+                onPress={() => setRhythm(item)}
+              >
+                <Pill label={item.label} active={item.label === rhythm.label} />
+              </Pressable>
+            ))}
+          </View>
+          <Field
+            multiline
+            value={meaning}
+            onChangeText={setMeaning}
+            placeholder="오늘 이 식사가 나에게 가진 의미"
+          />
           {error ? (
             <Text selectable style={{ color: colors.danger, fontSize: 14, fontWeight: "800" }}>
               {error}
@@ -102,13 +167,33 @@ export default function FuelScreen() {
           <PrimaryButton
             disabled={createMutation.isPending}
             icon={Plus}
-            label={createMutation.isPending ? "분석 중" : "자동 분석 후 저장"}
+            label={createMutation.isPending ? "분석 중" : "Meal 기록 저장"}
             onPress={handleSave}
           />
         </View>
       </ScreenSection>
 
-      <ScreenSection title="오늘 먹은 것">
+      <ScreenSection title="오늘의 Meal">
+        {mealEntries.length ? (
+          mealEntries.map((entry) => (
+            <AppCard key={entry.id} tone="plain">
+              <Text selectable style={{ color: colors.ink, fontSize: 17, fontWeight: "900" }}>
+                {entry.title}
+              </Text>
+              <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}>
+                {entry.meaning}
+              </Text>
+            </AppCard>
+          ))
+        ) : (
+          <EmptyState
+            title="아직 Meal 기록이 없습니다."
+            body="식단의 완성도보다 식사 리듬을 먼저 봅니다."
+          />
+        )}
+      </ScreenSection>
+
+      <ScreenSection title="영양 참고">
         {mealLogs.length ? (
           mealLogs.map((meal) => (
             <AppCard key={meal.id} tone="plain">
@@ -121,28 +206,25 @@ export default function FuelScreen() {
                   <Text selectable style={{ color: colors.mutedInk, fontSize: 13 }}>
                     {meal.calories}kcal · 단백질 {meal.proteinGram}g · 탄수화물 {meal.carbsGram}g
                   </Text>
-                  <Text selectable style={{ color: colors.mutedInk, fontSize: 12 }}>
-                    입력: {meal.rawText} · 출처: {meal.source ?? "내부 DB"}
-                  </Text>
                 </View>
               </View>
             </AppCard>
           ))
         ) : (
           <EmptyState
-            title="아직 식단 기록이 없습니다."
-            body="음식을 입력하면 칼로리를 계산해 저장합니다."
+            title="영양 기록이 비어 있습니다."
+            body="음식명을 입력하면 자동으로 영양 정보를 참고합니다."
           />
         )}
       </ScreenSection>
 
-      <ScreenSection title="칼로리 해석">
+      <ScreenSection title="Meal 해석">
         <AppCard tone="amber">
           <Text selectable style={{ color: colors.ink, fontSize: 18, fontWeight: "900" }}>
             지금까지 탄수화물 {carbs}g, 단백질 {protein}g입니다.
           </Text>
           <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
-            기록이 7일 이상 쌓이면 분석 탭에서 감량/증량 목표에 맞춘 추천이 더 정확해집니다.
+            숫자는 보조 지표입니다. 론하츠는 식사가 내 생활 리듬 안에 있었는지를 함께 봅니다.
           </Text>
         </AppCard>
       </ScreenSection>

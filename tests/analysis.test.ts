@@ -1,6 +1,27 @@
-import { analyzeWeek, sumMealCalories } from "@/lib/analysis";
-import type { DaySummary, MealEntry } from "@/types/domain";
+import { analyzeLifeDirection, analyzeWeek, sumMealCalories } from "@/lib/analysis";
+import type { DaySummary, LifeEntry, LifeStackKey, MealEntry } from "@/types/domain";
 import { describe, expect, it } from "vitest";
+
+function lifeEntry(
+  stack: LifeStackKey,
+  entryDate: string,
+  input: Partial<LifeEntry> = {}
+): LifeEntry {
+  return {
+    id: `${stack}-${entryDate}-${Math.random()}`,
+    stack,
+    category: input.category ?? stack,
+    title: input.title ?? stack,
+    entryDate,
+    durationMinutes: input.durationMinutes ?? null,
+    intensity: input.intensity ?? null,
+    meaning: input.meaning ?? null,
+    note: input.note ?? null,
+    score: input.score ?? null,
+    details: input.details ?? {},
+    createdAt: input.createdAt ?? `${entryDate}T00:00:00.000Z`
+  };
+}
 
 describe("analysis helpers", () => {
   it("sums recorded meal calories", () => {
@@ -24,5 +45,24 @@ describe("analysis helpers", () => {
     expect(result.averageWorkoutMinutes).toBe(45);
     expect(result.recommendedDailyCalorieAdjustment).toBe(-200);
     expect(result.recommendedWeeklyWorkoutMinutes).toBe(0);
+  });
+
+  it("turns life entries into a weekly direction report", () => {
+    const entries: LifeEntry[] = [
+      lifeEntry("move", "2026-06-01", { durationMinutes: 60, score: 82 }),
+      lifeEntry("move", "2026-06-02", { durationMinutes: 90, score: 82 }),
+      lifeEntry("meal", "2026-06-01", { score: 82 }),
+      lifeEntry("meal", "2026-06-02", { score: 82 }),
+      lifeEntry("recovery", "2026-06-01", { score: 90 }),
+      lifeEntry("mind", "2026-06-02", { score: 80 })
+    ];
+
+    const report = analyzeLifeDirection(entries);
+
+    expect(report.movementMinutes).toBe(150);
+    expect(report.temperature).toBeGreaterThan(50);
+    expect(report.humidity).toBeGreaterThan(40);
+    expect(report.signals).toHaveLength(4);
+    expect(report.signals.find((signal) => signal.stack === "move")?.score).toBe(100);
   });
 });

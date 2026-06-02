@@ -2,6 +2,10 @@ export type GoalMode = "cut" | "maintain" | "gain";
 
 export type UserRole = "member" | "admin";
 
+export type LifeStackKey = "move" | "meal" | "recovery" | "mind";
+
+export type LifeIntensity = "light" | "moderate" | "hard" | "limit";
+
 export type Profile = {
   id: string;
   displayName: string | null;
@@ -57,6 +61,21 @@ export type ExerciseActivity = {
   defaultMinutes: number;
   description: string;
   source: string;
+};
+
+export type LifeEntry = {
+  id: string;
+  stack: LifeStackKey;
+  category: string;
+  title: string;
+  entryDate: string;
+  durationMinutes: number | null;
+  intensity: LifeIntensity | null;
+  meaning: string | null;
+  note: string | null;
+  score: number | null;
+  details: Record<string, unknown>;
+  createdAt: string;
 };
 
 export type MealEntry = {
@@ -137,6 +156,26 @@ export type DaySummary = {
   caloriesIn: number;
   caloriesOut: number;
   workoutMinutes: number;
+};
+
+export type StackSignal = {
+  stack: LifeStackKey;
+  label: string;
+  count: number;
+  score: number;
+  message: string;
+};
+
+export type LifeDirectionReport = {
+  temperature: number;
+  humidity: number;
+  routineScore: number;
+  movementMinutes: number;
+  mealDays: number;
+  recoveryDays: number;
+  mindDays: number;
+  signals: StackSignal[];
+  message: string;
 };
 
 export type WeeklyAnalysisInput = {

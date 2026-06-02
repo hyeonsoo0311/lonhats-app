@@ -1,14 +1,7 @@
 import { LoadingState } from "@/components/ui";
 import { colors } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
-import {
-  BookOpenText,
-  ChartNoAxesColumn,
-  Dumbbell,
-  House,
-  MessageSquareText,
-  Utensils
-} from "lucide-react-native";
+import { Brain, ChartNoAxesColumn, Footprints, House, Moon, Utensils } from "lucide-react-native";
 import { Redirect, Tabs } from "expo-router";
 import type { ColorValue } from "react-native";
 
@@ -50,36 +43,34 @@ export default function TabLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: "오늘", tabBarLabel: "오늘", tabBarIcon: createTabIcon(House) }}
+        options={{ title: "기록", tabBarLabel: "기록", tabBarIcon: createTabIcon(House) }}
       />
       <Tabs.Screen
         name="train"
-        options={{ title: "운동", tabBarLabel: "운동", tabBarIcon: createTabIcon(Dumbbell) }}
+        options={{ title: "Move", tabBarLabel: "Move", tabBarIcon: createTabIcon(Footprints) }}
       />
       <Tabs.Screen
         name="fuel"
-        options={{ title: "식단", tabBarLabel: "식단", tabBarIcon: createTabIcon(Utensils) }}
+        options={{ title: "Meal", tabBarLabel: "Meal", tabBarIcon: createTabIcon(Utensils) }}
+      />
+      <Tabs.Screen
+        name="recovery"
+        options={{ title: "Recovery", tabBarLabel: "Recovery", tabBarIcon: createTabIcon(Moon) }}
       />
       <Tabs.Screen
         name="reflect"
-        options={{ title: "기록", tabBarLabel: "기록", tabBarIcon: createTabIcon(BookOpenText) }}
-      />
-      <Tabs.Screen
-        name="community"
-        options={{
-          title: "커뮤니티",
-          tabBarLabel: "커뮤니티",
-          tabBarIcon: createTabIcon(MessageSquareText)
-        }}
+        options={{ title: "Mind", tabBarLabel: "Mind", tabBarIcon: createTabIcon(Brain) }}
       />
       <Tabs.Screen
         name="insights"
         options={{
-          title: "분석",
-          tabBarLabel: "분석",
+          href: null,
+          title: "Report",
+          tabBarLabel: "Report",
           tabBarIcon: createTabIcon(ChartNoAxesColumn)
         }}
       />
+      <Tabs.Screen name="community" options={{ href: null }} />
     </Tabs>
   );
 }

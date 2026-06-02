@@ -8,6 +8,9 @@ import type {
   FoodItem,
   GoalMode,
   JournalEntry,
+  LifeEntry,
+  LifeIntensity,
+  LifeStackKey,
   MealLog,
   Profile,
   WorkoutLog
@@ -25,6 +28,13 @@ function requireSupabase() {
 
 function today() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function weekStartDate() {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - 6);
+  return start.toISOString().slice(0, 10);
 }
 
 function toProfile(row: DbRecord): Profile {
@@ -141,6 +151,23 @@ function toComment(row: DbRecord): CommunityComment {
   };
 }
 
+function toLifeEntry(row: DbRecord): LifeEntry {
+  return {
+    id: row.id,
+    stack: row.stack,
+    category: row.category,
+    title: row.title,
+    entryDate: row.entry_date,
+    durationMinutes: row.duration_minutes ?? null,
+    intensity: row.intensity ?? null,
+    meaning: row.meaning ?? null,
+    note: row.note ?? null,
+    score: row.score ?? null,
+    details: row.details ?? {},
+    createdAt: row.created_at
+  };
+}
+
 export async function getProfile(userId: string) {
   const client = requireSupabase();
   const { data, error } = await client.from("profiles").select("*").eq("id", userId).maybeSingle();
@@ -173,6 +200,79 @@ export async function updateProfile(
   }
 
   return toProfile(data);
+}
+
+export async function getTodayLifeEntries(userId: string) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("life_entries")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("entry_date", today())
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(toLifeEntry);
+}
+
+export async function getWeeklyLifeEntries(userId: string) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("life_entries")
+    .select("*")
+    .eq("user_id", userId)
+    .gte("entry_date", weekStartDate())
+    .order("entry_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(toLifeEntry);
+}
+
+export async function createLifeEntry(
+  userId: string,
+  input: {
+    stack: LifeStackKey;
+    category: string;
+    title: string;
+    durationMinutes?: number | null;
+    intensity?: LifeIntensity | null;
+    meaning?: string | null;
+    note?: string | null;
+    score?: number | null;
+    details?: Record<string, unknown>;
+  }
+) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("life_entries")
+    .insert({
+      user_id: userId,
+      stack: input.stack,
+      category: input.category,
+      title: input.title,
+      entry_date: today(),
+      duration_minutes: input.durationMinutes,
+      intensity: input.intensity,
+      meaning: input.meaning,
+      note: input.note,
+      score: input.score,
+      details: input.details ?? {}
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return toLifeEntry(data);
 }
 
 export async function getTodayWorkoutLogs(userId: string) {

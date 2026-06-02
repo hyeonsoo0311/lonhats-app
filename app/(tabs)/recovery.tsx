@@ -3,16 +3,16 @@ import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
 import { createLifeEntry, getTodayLifeEntries } from "@/lib/database";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, Brain, Save } from "lucide-react-native";
+import { Moon, Save } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
-const mindTypes = ["독서", "공부", "글쓰기", "회고", "명상", "프로젝트", "기타"];
-const focusScores = [
-  { label: "흩어짐", value: 35 },
-  { label: "보통", value: 60 },
-  { label: "몰입", value: 82 },
-  { label: "깊은 몰입", value: 95 }
+const recoveryTypes = ["수면", "낮잠", "휴식", "스트레칭", "명상", "목욕", "기타"];
+const recoveryScores = [
+  { label: "부족", value: 30 },
+  { label: "아슬아슬", value: 55 },
+  { label: "괜찮음", value: 75 },
+  { label: "충분", value: 92 }
 ];
 
 function toNumber(value: string) {
@@ -20,15 +20,14 @@ function toNumber(value: string) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-export default function MindScreen() {
+export default function RecoveryScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const userId = user?.id ?? "";
-  const [category, setCategory] = useState("독서");
-  const [customCategory, setCustomCategory] = useState("");
-  const [duration, setDuration] = useState("30");
-  const [focus, setFocus] = useState(focusScores[1]);
-  const [meaning, setMeaning] = useState("오늘 생각의 방향을 조금 정리했다.");
+  const [category, setCategory] = useState("수면");
+  const [duration, setDuration] = useState("7");
+  const [score, setScore] = useState(recoveryScores[2]);
+  const [meaning, setMeaning] = useState("오늘의 몸을 조금 되돌려 놓았다.");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
 
@@ -37,21 +36,21 @@ export default function MindScreen() {
     queryFn: () => getTodayLifeEntries(userId),
     enabled: Boolean(userId)
   });
-  const mindEntries = (entriesQuery.data ?? []).filter((entry) => entry.stack === "mind");
-  const resolvedCategory = category === "기타" ? customCategory.trim() || "기타" : category;
+  const recoveryEntries = (entriesQuery.data ?? []).filter((entry) => entry.stack === "recovery");
 
   const saveMutation = useMutation({
     mutationFn: () =>
       createLifeEntry(userId, {
-        stack: "mind",
-        category: resolvedCategory,
-        title: `${resolvedCategory} · ${focus.label}`,
-        durationMinutes: toNumber(duration),
+        stack: "recovery",
+        category,
+        title: `${category} · ${score.label}`,
+        durationMinutes: category === "수면" ? (toNumber(duration) ?? 0) * 60 : toNumber(duration),
         meaning: meaning.trim(),
         note: note.trim() || null,
-        score: focus.value,
+        score: score.value,
         details: {
-          focus: focus.label
+          recoveryLevel: score.label,
+          rawDuration: duration
         }
       }),
     onSuccess: () => {
@@ -62,19 +61,16 @@ export default function MindScreen() {
     },
     onError: (mutationError) => {
       setError(
-        mutationError instanceof Error ? mutationError.message : "Mind 기록 저장에 실패했습니다."
+        mutationError instanceof Error
+          ? mutationError.message
+          : "Recovery 기록 저장에 실패했습니다."
       );
     }
   });
 
   function handleSave() {
-    if (!resolvedCategory.trim()) {
-      setError("Mind 카테고리를 입력해주세요.");
-      return;
-    }
-
     if (!meaning.trim()) {
-      setError("오늘 이 기록의 의미를 남겨주세요.");
+      setError("오늘 회복의 의미를 남겨주세요.");
       return;
     }
 
@@ -87,16 +83,16 @@ export default function MindScreen() {
       style={{ backgroundColor: colors.canvas }}
       contentContainerStyle={{ gap: spacing.lg, padding: spacing.md, paddingBottom: 110 }}
     >
-      <ScreenSection title="Mind stack" action="방향 기록">
-        <AppCard tone="amber">
+      <ScreenSection title="Recovery stack" action="습도 기록">
+        <AppCard tone="sky">
           <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <Brain color={colors.ink} size={22} strokeWidth={2.4} />
+            <Moon color={colors.ink} size={22} strokeWidth={2.4} />
             <View style={{ flex: 1, gap: spacing.xs }}>
               <Text selectable style={{ color: colors.ink, fontSize: 18, fontWeight: "900" }}>
-                마음과 생각도 기록의 대상입니다.
+                회복은 성과의 반대가 아니라 지속의 조건입니다.
               </Text>
               <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
-                독서, 공부, 회고, 글쓰기처럼 삶의 방향을 만든 시간을 남깁니다.
+                수면, 피로, 휴식의 흔적을 남기면 주간 리포트가 삶의 습도를 읽습니다.
               </Text>
             </View>
           </View>
@@ -104,29 +100,22 @@ export default function MindScreen() {
 
         <View style={{ gap: spacing.sm }}>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-            {mindTypes.map((item) => (
+            {recoveryTypes.map((item) => (
               <Pressable key={item} accessibilityRole="button" onPress={() => setCategory(item)}>
                 <Pill label={item} active={item === category} />
               </Pressable>
             ))}
           </View>
-          {category === "기타" ? (
-            <Field
-              value={customCategory}
-              onChangeText={setCustomCategory}
-              placeholder="직접 입력"
-            />
-          ) : null}
           <Field
             keyboardType="numeric"
             value={duration}
             onChangeText={setDuration}
-            placeholder="시간(분, 선택)"
+            placeholder={category === "수면" ? "수면 시간(시간)" : "회복 시간(분)"}
           />
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-            {focusScores.map((item) => (
-              <Pressable key={item.label} accessibilityRole="button" onPress={() => setFocus(item)}>
-                <Pill label={item.label} active={item.label === focus.label} />
+            {recoveryScores.map((item) => (
+              <Pressable key={item.label} accessibilityRole="button" onPress={() => setScore(item)}>
+                <Pill label={item.label} active={item.label === score.label} />
               </Pressable>
             ))}
           </View>
@@ -134,13 +123,13 @@ export default function MindScreen() {
             multiline
             value={meaning}
             onChangeText={setMeaning}
-            placeholder="오늘 이 기록이 나에게 가진 의미"
+            placeholder="오늘 회복이 나에게 가진 의미"
           />
           <Field
             multiline
             value={note}
             onChangeText={setNote}
-            placeholder="읽은 것, 공부한 것, 떠오른 생각"
+            placeholder="피로감, 수면 질, 몸 상태"
           />
           {error ? (
             <Text selectable style={{ color: colors.danger, fontSize: 14, fontWeight: "800" }}>
@@ -150,33 +139,28 @@ export default function MindScreen() {
           <PrimaryButton
             disabled={saveMutation.isPending}
             icon={Save}
-            label={saveMutation.isPending ? "저장 중" : "Mind 기록 저장"}
+            label={saveMutation.isPending ? "저장 중" : "Recovery 기록 저장"}
             onPress={handleSave}
           />
         </View>
       </ScreenSection>
 
-      <ScreenSection title="오늘의 Mind">
-        {mindEntries.length ? (
-          mindEntries.map((entry) => (
+      <ScreenSection title="오늘의 Recovery">
+        {recoveryEntries.length ? (
+          recoveryEntries.map((entry) => (
             <AppCard key={entry.id} tone="plain">
-              <View style={{ flexDirection: "row", gap: spacing.sm }}>
-                <BookOpen color={colors.amber} size={22} strokeWidth={2.4} />
-                <View style={{ flex: 1, gap: spacing.xs }}>
-                  <Text selectable style={{ color: colors.ink, fontSize: 17, fontWeight: "900" }}>
-                    {entry.title}
-                  </Text>
-                  <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}>
-                    {entry.meaning}
-                  </Text>
-                </View>
-              </View>
+              <Text selectable style={{ color: colors.ink, fontSize: 17, fontWeight: "900" }}>
+                {entry.title}
+              </Text>
+              <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}>
+                {entry.meaning}
+              </Text>
             </AppCard>
           ))
         ) : (
           <EmptyState
-            title="아직 Mind 기록이 없습니다."
-            body="독서, 공부, 생각의 흔적을 남기면 삶의 방향이 보입니다."
+            title="아직 Recovery 기록이 없습니다."
+            body="수면과 휴식을 기록하면 내 삶의 습도가 보입니다."
           />
         )}
       </ScreenSection>

@@ -2,25 +2,31 @@
 
 ## Purpose
 
-Better Today is for people who are trying to live better than yesterday, or who need to believe that their effort still counts. The app combines workout tracking, meal tracking, calorie analysis, and reflective journaling.
+lonhats is a record-first app for people who inspect and cultivate their own lives. It does not assume that everyone is moving toward the same body, job, routine, or identity. The app acts like a personal thermometer and hygrometer: it helps the user see the temperature and humidity of the life they are trying to live.
 
-## MVP
+## Core Structure
 
-1. Record workout routines by exercise, sets, reps, load, and duration.
-2. Explain exercise movements, target areas, purpose, and key cues.
-3. Record meals and calories.
-4. Analyze calories and macros from recorded meals.
-5. Summarize workouts and calories weekly.
-6. Recommend conservative calorie and workout adjustments for cutting, maintaining, or gaining.
-7. Support a short daily journal, mood check, and small-win record.
+1. `Move stack`: movement, exercise, walking, running, yoga, pilates, home training, and optional detailed workout notes.
+2. `Meal stack`: food intake, meal rhythm, nutrition reference, and the meaning of eating well enough.
+3. `Recovery stack`: sleep, rest, fatigue, stretching, meditation, and recovery quality.
+4. `Mind stack`: reading, studying, writing, reflection, projects, and other self-development records.
+
+## MVP Direction
+
+1. Record daily life entries across the four stacks.
+2. Keep detailed exercise fields optional so simple records stay quick.
+3. Preserve calorie and MET estimates as supporting data, not the product's center.
+4. Analyze weekly life direction: movement, recovery, meal rhythm, and routine consistency.
+5. Support community conversation in one channel, `Better tomorrow`.
+6. Prepare admin-friendly tables in Supabase so user records, feedback, notices, and admin notes can later become a full admin page.
 
 ## Product Tone
 
 - Firm but not punishing.
-- Emotional but not childish.
-- Kitsch in small, collectible moments: one-line diary, small wins, mood tags, weekly letters.
-- Never shame missed workouts or imperfect meals.
+- Reflective but not heavy.
+- Kitsch in small, collectible moments: one-line meaning, small wins, weekly letters, gentle tags.
+- Never shame missed workouts, imperfect meals, or low-output weeks.
 
 ## Safety
 
-The app should avoid medical certainty. Weight change recommendations must stay conservative and include a non-medical disclaimer before production release.
+The app should avoid medical certainty. Calories, exercise output, fatigue, and recovery analysis are references only, not diagnosis or medical advice.
