@@ -33,6 +33,80 @@ Before implementing product work, read these files:
 
 Older files such as `docs/product.md`, `docs/features.md`, and `docs/data-model.md` may contain useful context, but the uppercase docs above are the current working references.
 
+## Role Switching Workflow
+
+When the user asks for a new feature or a product change, do not jump directly into code. Work through these roles in order.
+
+### 1. Product Strategist
+
+Check whether the request supports Lonhats' north star:
+
+"record a small honest proof of effort, understand life direction, and feel less alone without comparison."
+
+Classify the request as one of:
+
+- `aligned`
+- `partially aligned`
+- `risky`
+- `out of scope`
+
+### 2. UX Designer
+
+Design the user flow before implementation.
+
+Prefer:
+
+- Simple recording.
+- Low friction.
+- Emotional meaning.
+- A clear default path.
+- Optional details only when they add real value.
+
+### 3. UI Designer
+
+Define the interface before editing screens:
+
+- Screen states.
+- CTA copy.
+- Empty states.
+- Button hierarchy.
+- Card layout.
+
+Use `docs/UI_RULES.md`. Avoid generic fitness-app language.
+
+### 4. Developer
+
+Inspect existing code patterns before editing.
+
+Rules:
+
+- Use the smallest safe change.
+- Do not refactor unrelated code.
+- Preserve Supabase RLS.
+- Preserve existing data ownership rules.
+
+### 5. QA Reviewer
+
+Check:
+
+- Behavior.
+- Edge cases.
+- Empty states.
+- Loading states.
+- Error states.
+
+Run typecheck, format, lint, and tests when meaningful.
+
+### 6. Handoff
+
+Summarize:
+
+- Product decision.
+- UX/UI changes.
+- Files changed.
+- How to test.
+- Assumptions and risks.
+
 ## Implementation Rules
 
 - Keep recording fast, simple, and emotionally meaningful.
