@@ -3,17 +3,20 @@ import {
   EmptyState,
   Field,
   LoadingState,
+  Pill,
   PrimaryButton,
   ScreenSection
 } from "@/components/ui";
 import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
+import { proofKindLabels, splitProofBody } from "@/lib/community";
 import {
   createCommunityComment,
   getCommunityComments,
   getCommunityPost,
   voteCommunityPost
 } from "@/lib/database";
+import { stackLabels } from "@/lib/life";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { MessageCircle, Send, ThumbsDown, ThumbsUp } from "lucide-react-native";
@@ -71,6 +74,7 @@ export default function PostDetailScreen() {
   }
 
   const post = postQuery.data;
+  const proof = post ? splitProofBody(post.body) : null;
 
   return (
     <>
@@ -95,17 +99,22 @@ export default function PostDetailScreen() {
                 </Pressable>
               </View>
               <View style={{ flex: 1, gap: spacing.sm }}>
-                <Text
-                  selectable
-                  style={{ color: colors.mutedInk, fontSize: 13, fontWeight: "800" }}
-                >
-                  {post.channel} · {post.authorName ?? "멤버"}
-                </Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>
+                  <Pill label={post.postType === "proof" ? "작은 인증" : post.channel} active />
+                  {post.proofKind ? <Pill label={proofKindLabels[post.proofKind]} /> : null}
+                  {post.stack ? <Pill label={stackLabels[post.stack]} /> : null}
+                  <Pill label={post.authorName ?? "멤버"} />
+                </View>
                 <Text selectable style={{ color: colors.ink, fontSize: 22, fontWeight: "900" }}>
                   {post.title}
                 </Text>
+                {post.postType === "proof" && proof ? (
+                  <Text selectable style={{ color: colors.ink, fontSize: 16, fontWeight: "900" }}>
+                    {proof.summary}
+                  </Text>
+                ) : null}
                 <Text selectable style={{ color: colors.ink, fontSize: 15, lineHeight: 22 }}>
-                  {post.body}
+                  {post.postType === "proof" && proof?.quote ? proof.quote : post.body}
                 </Text>
               </View>
             </View>

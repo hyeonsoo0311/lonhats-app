@@ -3,6 +3,8 @@ import type {
   AppNotice,
   CommunityComment,
   CommunityPost,
+  CommunityPostType,
+  CommunityProofKind,
   DaySummary,
   ExerciseActivity,
   FoodItem,
@@ -132,6 +134,11 @@ function toPost(row: DbRecord): CommunityPost {
     title: row.title,
     body: row.body,
     channel: row.channel,
+    postType: (row.post_type ?? "discussion") as CommunityPostType,
+    stack: (row.stack ?? null) as LifeStackKey | null,
+    proofKind: (row.proof_kind ?? null) as CommunityProofKind | null,
+    sourceLifeEntryId: row.source_life_entry_id ?? null,
+    challengeDay: row.challenge_day ?? null,
     authorId: row.user_id,
     authorName: row.author_display_name ?? null,
     upvoteCount: row.upvote_count ?? 0,
@@ -494,7 +501,16 @@ export async function getCommunityPost(postId: string) {
 
 export async function createCommunityPost(
   userId: string,
-  input: { title: string; body: string; authorName?: string | null }
+  input: {
+    title: string;
+    body: string;
+    authorName?: string | null;
+    postType?: CommunityPostType;
+    stack?: LifeStackKey | null;
+    proofKind?: CommunityProofKind | null;
+    sourceLifeEntryId?: string | null;
+    challengeDay?: number | null;
+  }
 ) {
   const client = requireSupabase();
   const { data, error } = await client
@@ -504,7 +520,12 @@ export async function createCommunityPost(
       author_display_name: input.authorName,
       title: input.title,
       body: input.body,
-      channel: "Better tomorrow"
+      channel: "Better tomorrow",
+      post_type: input.postType ?? "discussion",
+      stack: input.stack ?? null,
+      proof_kind: input.proofKind ?? null,
+      source_life_entry_id: input.sourceLifeEntryId ?? null,
+      challenge_day: input.challengeDay ?? null
     })
     .select("*")
     .single();

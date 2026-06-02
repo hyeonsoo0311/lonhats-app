@@ -1,7 +1,15 @@
 import { LoadingState } from "@/components/ui";
 import { colors } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
-import { Brain, ChartNoAxesColumn, Footprints, House, Moon, Utensils } from "lucide-react-native";
+import {
+  Brain,
+  ChartNoAxesColumn,
+  Footprints,
+  House,
+  MessageCircle,
+  Moon,
+  Utensils
+} from "lucide-react-native";
 import { Redirect, Tabs } from "expo-router";
 import type { ColorValue } from "react-native";
 
@@ -70,7 +78,14 @@ export default function TabLayout() {
           tabBarIcon: createTabIcon(ChartNoAxesColumn)
         }}
       />
-      <Tabs.Screen name="community" options={{ href: null }} />
+      <Tabs.Screen
+        name="community"
+        options={{
+          title: "작은 인증",
+          tabBarLabel: "인증",
+          tabBarIcon: createTabIcon(MessageCircle)
+        }}
+      />
     </Tabs>
   );
 }

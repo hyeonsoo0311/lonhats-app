@@ -47,6 +47,23 @@ Every core screen is a recording surface. The user should be able to leave a use
 - Stack-level signals that explain what was sufficient or missing.
 - No shame-based recommendations.
 
+## Community
+
+- One channel: `Better tomorrow`.
+- Primary post type: small proof.
+- Proof kinds:
+  - Today's Better.
+  - 7-day challenge progress.
+  - Weekly share.
+- Proof metadata:
+  - Stack: Move, Meal, Recovery, or Mind.
+  - Optional source `life_entries` row.
+  - Optional challenge day.
+- Feed cards should read like a small certification, for example:
+  - `민지님이 오늘의 Better를 완료했습니다.`
+  - `Move Stack · 30분 걷기 · 적당히`
+  - `"퇴근하고 바로 누울 뻔했는데, 20분만 걷고 왔다."`
+
 ## Future Enhancements
 
 - User-defined personal temperature and humidity targets.

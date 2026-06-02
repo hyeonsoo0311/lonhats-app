@@ -1,10 +1,10 @@
 import type { LifeIntensity, LifeStackKey } from "@/types/domain";
 
 export const stackLabels: Record<LifeStackKey, string> = {
-  move: "Move stack",
-  meal: "Meal stack",
-  recovery: "Recovery stack",
-  mind: "Mind stack"
+  move: "Move Stack",
+  meal: "Meal Stack",
+  recovery: "Recovery Stack",
+  mind: "Mind Stack"
 };
 
 export const stackDescriptions: Record<LifeStackKey, string> = {

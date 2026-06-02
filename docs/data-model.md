@@ -33,3 +33,13 @@
 ## Ownership
 
 Every user-owned table includes `user_id uuid references auth.users(id)` and Row Level Security. Users can read and write only their own rows. Admin-only access uses `public.profiles.role = 'admin'` through the private helper `app_private.is_admin()`.
+
+## Community Proofs
+
+`community_posts` supports both general discussion and structured small proof posts:
+
+- `post_type`: `discussion` or `proof`.
+- `proof_kind`: `daily_better`, `challenge_day`, or `weekly_share`.
+- `stack`: optional Move, Meal, Recovery, or Mind stack.
+- `source_life_entry_id`: optional link back to the user's record.
+- `challenge_day`: optional progress day for challenge posts.

@@ -6,6 +6,10 @@ export type LifeStackKey = "move" | "meal" | "recovery" | "mind";
 
 export type LifeIntensity = "light" | "moderate" | "hard" | "limit";
 
+export type CommunityPostType = "discussion" | "proof";
+
+export type CommunityProofKind = "daily_better" | "challenge_day" | "weekly_share";
+
 export type Profile = {
   id: string;
   displayName: string | null;
@@ -128,6 +132,11 @@ export type CommunityPost = {
   title: string;
   body: string;
   channel: string;
+  postType: CommunityPostType;
+  stack: LifeStackKey | null;
+  proofKind: CommunityProofKind | null;
+  sourceLifeEntryId: string | null;
+  challengeDay: number | null;
   authorId: string;
   authorName: string | null;
   upvoteCount: number;

@@ -1,4 +1,5 @@
 import { analyzeLifeDirection, analyzeWeek, sumMealCalories } from "@/lib/analysis";
+import { buildProofTitle, formatLifeEntryProofSummary } from "@/lib/community";
 import type { DaySummary, LifeEntry, LifeStackKey, MealEntry } from "@/types/domain";
 import { describe, expect, it } from "vitest";
 
@@ -64,5 +65,18 @@ describe("analysis helpers", () => {
     expect(report.humidity).toBeGreaterThan(40);
     expect(report.signals).toHaveLength(4);
     expect(report.signals.find((signal) => signal.stack === "move")?.score).toBe(100);
+  });
+
+  it("formats small proof community text", () => {
+    const entry = lifeEntry("move", "2026-06-02", {
+      category: "걷기",
+      durationMinutes: 30,
+      intensity: "moderate"
+    });
+
+    expect(buildProofTitle("민지", "daily_better", null)).toBe(
+      "민지님이 오늘의 Better를 완료했습니다."
+    );
+    expect(formatLifeEntryProofSummary(entry)).toBe("Move Stack · 30분 걷기 · 적당히");
   });
 });

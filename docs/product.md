@@ -17,7 +17,7 @@ lonhats is a record-first app for people who inspect and cultivate their own liv
 2. Keep detailed exercise fields optional so simple records stay quick.
 3. Preserve calorie and MET estimates as supporting data, not the product's center.
 4. Analyze weekly life direction: movement, recovery, meal rhythm, and routine consistency.
-5. Support community conversation in one channel, `Better tomorrow`.
+5. Support a `Better tomorrow` community where users share small proof posts from their daily or weekly records.
 6. Prepare admin-friendly tables in Supabase so user records, feedback, notices, and admin notes can later become a full admin page.
 
 ## Product Tone

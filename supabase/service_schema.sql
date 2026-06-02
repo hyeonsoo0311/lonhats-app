@@ -207,6 +207,11 @@ create table if not exists public.community_posts (
   channel text not null default 'Better tomorrow',
   title text not null,
   body text not null,
+  post_type text not null default 'discussion' check (post_type in ('discussion', 'proof')),
+  stack text check (stack is null or stack in ('move', 'meal', 'recovery', 'mind')),
+  proof_kind text check (proof_kind is null or proof_kind in ('daily_better', 'challenge_day', 'weekly_share')),
+  source_life_entry_id uuid,
+  challenge_day integer check (challenge_day is null or (challenge_day >= 1 and challenge_day <= 30)),
   upvote_count integer not null default 0,
   comment_count integer not null default 0,
   deleted_at timestamptz,
@@ -363,6 +368,9 @@ create index if not exists admin_notes_admin_id_idx on public.admin_notes (admin
 create index if not exists admin_notes_target_user_id_idx on public.admin_notes (target_user_id);
 create index if not exists app_notices_created_by_idx on public.app_notices (created_by);
 create index if not exists community_posts_user_id_idx on public.community_posts (user_id);
+create index if not exists community_posts_post_type_idx on public.community_posts (post_type);
+create index if not exists community_posts_proof_stack_idx on public.community_posts (proof_kind, stack);
+create index if not exists community_posts_source_life_entry_id_idx on public.community_posts (source_life_entry_id);
 create index if not exists community_comments_post_id_idx on public.community_comments (post_id);
 create index if not exists community_comments_user_id_idx on public.community_comments (user_id);
 create index if not exists community_comments_parent_id_idx on public.community_comments (parent_id);
