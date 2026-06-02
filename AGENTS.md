@@ -78,7 +78,10 @@ git --git-dir=.git-codex --work-tree=. push
 - Supabase Auth and database.
 - `life_entries` is the core record table for the four stacks.
 - `community_posts` supports small proof posts through `post_type`, `proof_kind`, `stack`, `source_life_entry_id`, and `challenge_day`.
+- `journal_entries` stores the separate diary screen.
+- `life_gauge_criteria` stores each user's personal life temperature and humidity criteria.
 - The `Better tomorrow` community is one channel for now.
+- Bottom tabs should stay focused on `홈`, `일기`, `기준`, and `커뮤니티`. Stack recording screens are reached from Home.
 
 ## Decision Rule
 

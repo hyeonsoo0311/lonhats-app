@@ -10,6 +10,7 @@ import type {
   FoodItem,
   GoalMode,
   JournalEntry,
+  LifeGaugeCriteria,
   LifeEntry,
   LifeIntensity,
   LifeStackKey,
@@ -175,6 +176,21 @@ function toLifeEntry(row: DbRecord): LifeEntry {
   };
 }
 
+function toLifeGaugeCriteria(row: DbRecord): LifeGaugeCriteria {
+  return {
+    userId: row.user_id,
+    targetTemperature: row.target_temperature ?? 70,
+    targetHumidity: row.target_humidity ?? 70,
+    temperatureDefinition: row.temperature_definition ?? null,
+    temperatureLowNote: row.temperature_low_note ?? null,
+    temperatureHighNote: row.temperature_high_note ?? null,
+    humidityDefinition: row.humidity_definition ?? null,
+    humidityLowNote: row.humidity_low_note ?? null,
+    humidityHighNote: row.humidity_high_note ?? null,
+    updatedAt: row.updated_at
+  };
+}
+
 export async function getProfile(userId: string) {
   const client = requireSupabase();
   const { data, error } = await client.from("profiles").select("*").eq("id", userId).maybeSingle();
@@ -280,6 +296,62 @@ export async function createLifeEntry(
   }
 
   return toLifeEntry(data);
+}
+
+export async function getLifeGaugeCriteria(userId: string) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("life_gauge_criteria")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ? toLifeGaugeCriteria(data) : null;
+}
+
+export async function upsertLifeGaugeCriteria(
+  userId: string,
+  input: {
+    targetTemperature: number;
+    targetHumidity: number;
+    temperatureDefinition: string;
+    temperatureLowNote: string;
+    temperatureHighNote: string;
+    humidityDefinition: string;
+    humidityLowNote: string;
+    humidityHighNote: string;
+  }
+) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("life_gauge_criteria")
+    .upsert(
+      {
+        user_id: userId,
+        target_temperature: input.targetTemperature,
+        target_humidity: input.targetHumidity,
+        temperature_definition: input.temperatureDefinition,
+        temperature_low_note: input.temperatureLowNote,
+        temperature_high_note: input.temperatureHighNote,
+        humidity_definition: input.humidityDefinition,
+        humidity_low_note: input.humidityLowNote,
+        humidity_high_note: input.humidityHighNote,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: "user_id" }
+    )
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return toLifeGaugeCriteria(data);
 }
 
 export async function getTodayWorkoutLogs(userId: string) {

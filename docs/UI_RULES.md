@@ -19,6 +19,17 @@ The first screen should focus on:
 
 Do not make a marketing-style landing page inside the app.
 
+## Bottom Navigation
+
+Bottom tabs should remain simple:
+
+- `홈`
+- `일기`
+- `기준`
+- `커뮤니티`
+
+Do not expose `Move`, `Meal`, `Recovery`, or `Mind` as bottom tabs. Those stack recording screens are reached from Home.
+
 ## Recording UI
 
 Recording should be fast.

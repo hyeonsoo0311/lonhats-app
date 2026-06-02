@@ -19,6 +19,8 @@ Make Lonhats usable as a record-based community app centered on `Today's Better`
 - Better tomorrow community foundation.
 - Small proof community metadata.
 - Small proof feed and detail UI.
+- Separate diary screen.
+- Personal life temperature and humidity criteria.
 
 ## Near-Term Tasks
 
@@ -109,7 +111,6 @@ Check:
 
 ## Later Tasks
 
-- User-defined life temperature and humidity targets.
 - Push notifications with non-shaming copy.
 - Weekly letter from records.
 - Better food search UX.

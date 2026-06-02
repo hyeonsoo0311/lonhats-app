@@ -9,7 +9,12 @@ import {
 import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
 import { analyzeLifeDirection } from "@/lib/analysis";
-import { getAppNotices, getTodayLifeEntries, getWeeklyLifeEntries } from "@/lib/database";
+import {
+  getAppNotices,
+  getLifeGaugeCriteria,
+  getTodayLifeEntries,
+  getWeeklyLifeEntries
+} from "@/lib/database";
 import { stackDescriptions, stackLabels } from "@/lib/life";
 import type { LifeStackKey } from "@/types/domain";
 import { useQuery } from "@tanstack/react-query";
@@ -21,6 +26,8 @@ import {
   Footprints,
   LogOut,
   Moon,
+  NotebookPen,
+  SlidersHorizontal,
   Thermometer,
   Utensils
 } from "lucide-react-native";
@@ -38,6 +45,20 @@ const stacks: {
   { key: "recovery", route: "/recovery", cta: "Recovery 기록", icon: Moon, tone: "sky" },
   { key: "mind", route: "/reflect", cta: "Mind 기록", icon: Brain, tone: "amber" }
 ];
+
+function gaugeHelper(current: number, target?: number) {
+  if (typeof target !== "number") {
+    return "나의 기준을 설정할 수 있습니다";
+  }
+
+  const gap = current - target;
+
+  if (Math.abs(gap) <= 8) {
+    return `내 기준 ${target}에 가깝습니다`;
+  }
+
+  return gap > 0 ? `내 기준 ${target}보다 높습니다` : `내 기준 ${target}보다 낮습니다`;
+}
 
 export default function TodayScreen() {
   const { profile, signOut, user } = useAuth();
@@ -58,10 +79,16 @@ export default function TodayScreen() {
     queryKey: ["app-notices"],
     queryFn: getAppNotices
   });
+  const criteriaQuery = useQuery({
+    queryKey: ["life-gauge-criteria", userId],
+    queryFn: () => getLifeGaugeCriteria(userId),
+    enabled: Boolean(userId)
+  });
 
   const todayEntries = todayQuery.data ?? [];
   const weeklyEntries = weeklyQuery.data ?? [];
   const report = analyzeLifeDirection(weeklyEntries);
+  const criteria = criteriaQuery.data;
 
   return (
     <ScrollView
@@ -87,7 +114,7 @@ export default function TodayScreen() {
             icon={Thermometer}
             label="삶의 온도"
             value={`${report.temperature}°`}
-            helper="움직임과 몰입의 열감"
+            helper={gaugeHelper(report.temperature, criteria?.targetTemperature)}
             tone="mint"
           />
         </View>
@@ -96,7 +123,7 @@ export default function TodayScreen() {
             icon={Droplets}
             label="삶의 습도"
             value={`${report.humidity}%`}
-            helper="회복과 안정의 수분감"
+            helper={gaugeHelper(report.humidity, criteria?.targetHumidity)}
             tone="sky"
           />
         </View>
@@ -172,6 +199,32 @@ export default function TodayScreen() {
             icon={ChartNoAxesColumn}
             label="Report 보기"
             onPress={() => router.push("/insights")}
+          />
+          <SecondaryButton
+            icon={SlidersHorizontal}
+            label="나의 기준 보기"
+            onPress={() => router.push("/criteria")}
+          />
+        </AppCard>
+      </ScreenSection>
+
+      <ScreenSection title="하루 정리">
+        <AppCard tone="amber">
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <NotebookPen color={colors.ink} size={22} strokeWidth={2.4} />
+            <View style={{ flex: 1, gap: spacing.xs }}>
+              <Text selectable style={{ color: colors.ink, fontSize: 18, fontWeight: "900" }}>
+                조금 더 길게 남기고 싶은 날
+              </Text>
+              <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
+                Stack 기록보다 긴 마음과 생각은 일기에 따로 보관합니다.
+              </Text>
+            </View>
+          </View>
+          <PrimaryButton
+            icon={NotebookPen}
+            label="일기 쓰기"
+            onPress={() => router.push("/diary")}
           />
         </AppCard>
       </ScreenSection>

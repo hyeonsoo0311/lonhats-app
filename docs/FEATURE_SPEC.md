@@ -107,6 +107,36 @@ Current report concepts:
 - Routine score: overall stack consistency.
 - Stack signals: simple messages for Move, Meal, Recovery, Mind.
 
+## Diary
+
+The diary is separate from Mind Stack.
+
+Purpose:
+
+- Let the user write a longer reflection.
+- Store the mood of the day.
+- Store one small win or sentence to remember.
+- Keep recent diary entries visible.
+
+The diary should not replace stack records. Stack records are for `Today's Better`; diary is for longer emotional context.
+
+## Personal Criteria
+
+Users can define their own standards for life temperature and life humidity.
+
+The criteria page should support:
+
+- Target life temperature.
+- Target life humidity.
+- What temperature means to the user.
+- What low temperature means.
+- What overly high temperature means.
+- What humidity means to the user.
+- What low humidity means.
+- What overly high humidity means.
+
+The home screen can compare the current report against the user's saved criteria.
+
 ## Community
 
 The community channel is `Better tomorrow`.

@@ -2,12 +2,13 @@ import { LoadingState } from "@/components/ui";
 import { colors } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
 import {
-  Brain,
   ChartNoAxesColumn,
   Footprints,
   House,
   MessageCircle,
   Moon,
+  NotebookPen,
+  SlidersHorizontal,
   Utensils
 } from "lucide-react-native";
 import { Redirect, Tabs } from "expo-router";
@@ -51,23 +52,55 @@ export default function TabLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: "기록", tabBarLabel: "기록", tabBarIcon: createTabIcon(House) }}
+        options={{ title: "홈", tabBarLabel: "홈", tabBarIcon: createTabIcon(House) }}
       />
       <Tabs.Screen
         name="train"
-        options={{ title: "Move", tabBarLabel: "Move", tabBarIcon: createTabIcon(Footprints) }}
+        options={{
+          href: null,
+          title: "Move",
+          tabBarLabel: "Move",
+          tabBarIcon: createTabIcon(Footprints)
+        }}
       />
       <Tabs.Screen
         name="fuel"
-        options={{ title: "Meal", tabBarLabel: "Meal", tabBarIcon: createTabIcon(Utensils) }}
+        options={{
+          href: null,
+          title: "Meal",
+          tabBarLabel: "Meal",
+          tabBarIcon: createTabIcon(Utensils)
+        }}
       />
       <Tabs.Screen
         name="recovery"
-        options={{ title: "Recovery", tabBarLabel: "Recovery", tabBarIcon: createTabIcon(Moon) }}
+        options={{
+          href: null,
+          title: "Recovery",
+          tabBarLabel: "Recovery",
+          tabBarIcon: createTabIcon(Moon)
+        }}
       />
       <Tabs.Screen
         name="reflect"
-        options={{ title: "Mind", tabBarLabel: "Mind", tabBarIcon: createTabIcon(Brain) }}
+        options={{
+          href: null,
+          title: "Mind",
+          tabBarLabel: "Mind",
+          tabBarIcon: createTabIcon(NotebookPen)
+        }}
+      />
+      <Tabs.Screen
+        name="diary"
+        options={{ title: "일기", tabBarLabel: "일기", tabBarIcon: createTabIcon(NotebookPen) }}
+      />
+      <Tabs.Screen
+        name="criteria"
+        options={{
+          title: "나의 기준",
+          tabBarLabel: "기준",
+          tabBarIcon: createTabIcon(SlidersHorizontal)
+        }}
       />
       <Tabs.Screen
         name="insights"
@@ -81,8 +114,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="community"
         options={{
-          title: "작은 인증",
-          tabBarLabel: "인증",
+          title: "커뮤니티",
+          tabBarLabel: "커뮤니티",
           tabBarIcon: createTabIcon(MessageCircle)
         }}
       />

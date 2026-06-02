@@ -187,6 +187,19 @@ export type LifeDirectionReport = {
   message: string;
 };
 
+export type LifeGaugeCriteria = {
+  userId: string;
+  targetTemperature: number;
+  targetHumidity: number;
+  temperatureDefinition: string | null;
+  temperatureLowNote: string | null;
+  temperatureHighNote: string | null;
+  humidityDefinition: string | null;
+  humidityLowNote: string | null;
+  humidityHighNote: string | null;
+  updatedAt: string;
+};
+
 export type WeeklyAnalysisInput = {
   goalMode: GoalMode;
   dailyCalorieTarget: number;

@@ -4,6 +4,7 @@
 
 - `profiles`: display name, app role, body data, and user preferences.
 - `life_entries`: shared record table for Move, Meal, Recovery, and Mind.
+- `life_gauge_criteria`: user-defined criteria for interpreting life temperature and humidity.
 - `workout_logs`: supporting workout output table for MET and calorie estimates.
 - `exercise_catalog`: reusable exercise activity catalog with MET values.
 - `meal_logs`: supporting food and nutrition record table.
@@ -43,3 +44,16 @@ Every user-owned table includes `user_id uuid references auth.users(id)` and Row
 - `stack`: optional Move, Meal, Recovery, or Mind stack.
 - `source_life_entry_id`: optional link back to the user's record.
 - `challenge_day`: optional progress day for challenge posts.
+
+## Personal Gauge Criteria
+
+`life_gauge_criteria` stores one row per user:
+
+- `target_temperature`: the user's desired life temperature.
+- `target_humidity`: the user's desired life humidity.
+- `temperature_definition`: what life temperature means to the user.
+- `temperature_low_note`: how low temperature shows up.
+- `temperature_high_note`: how overly high temperature shows up.
+- `humidity_definition`: what life humidity means to the user.
+- `humidity_low_note`: how low humidity shows up.
+- `humidity_high_note`: how overly high humidity shows up.
