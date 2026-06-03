@@ -121,6 +121,20 @@ export type MealLog = {
   confidence: number | null;
 };
 
+export type BodyLog = {
+  id: string;
+  measuredOn: string;
+  heightCm: number | null;
+  weightKg: number | null;
+  birthDate: string | null;
+  sex: "female" | "male" | "other" | null;
+  skeletalMuscleKg: number | null;
+  bodyFatPercent: number | null;
+  condition: string | null;
+  note: string | null;
+  createdAt: string;
+};
+
 export type JournalEntry = {
   id: string;
   entryDate: string;

@@ -45,6 +45,21 @@ Rules:
 - After saving, the user can optionally share a small proof.
 - Private details, especially Meal details, should not be automatically shared.
 
+## Home Daily Dashboard
+
+Home should behave like a daily record dashboard, not a marketing screen.
+
+It should show:
+
+- Life temperature.
+- Life humidity.
+- Personal routine completion rate.
+- Clear entry points for `Meal`, `Move`, `Recovery`, `Mind`, and `Body`.
+- Meal slot status for breakfast, lunch, dinner, and snacks.
+- A short list of today's saved records.
+
+Home should make it obvious what the user can record next.
+
 ## Move Stack
 
 Required:
@@ -68,7 +83,9 @@ Optional:
 Required:
 
 - Meal type or meal category.
-- Food text or meal note.
+- Meal slot: breakfast, lunch, dinner, snack, drink, or custom.
+- Food name.
+- Amount in grams when available.
 - Meal rhythm signal.
 - Today's meaning.
 
@@ -79,7 +96,7 @@ Optional:
 - Food source data.
 - Amount.
 
-Food analysis should help the user understand the record. It should not make the app feel like a strict diet audit.
+Food analysis should show the serving basis clearly, such as `현미밥 210g 기준 320kcal`. It should help the user understand the record. It should not make the app feel like a strict diet audit.
 
 ## Recovery Stack
 
@@ -92,9 +109,29 @@ Required:
 Optional:
 
 - Duration.
+- Bedtime.
+- Wake time.
+- Calculated sleep duration.
 - Fatigue note.
 - Sleep quality note.
 - Body condition.
+
+## Body
+
+Body records are private personal state records.
+
+Supported fields:
+
+- Height.
+- Weight.
+- Birth date.
+- Sex.
+- Skeletal muscle mass.
+- Body fat percentage.
+- Condition.
+- Note.
+
+Body data should not be automatically shared to community posts. It exists to help the user understand their own state, not to compare bodies.
 
 ## Mind Stack
 

@@ -155,6 +155,7 @@ git --git-dir=.git-codex --work-tree=. push
 - `journal_entries` stores the separate diary screen.
 - `life_gauge_criteria` stores each user's personal life temperature and humidity criteria.
 - `life_routines` and `life_routine_checkins` store each user's personal routine criteria and manual confirmations for life temperature and humidity.
+- `body_logs` stores private body state records and must not be shared automatically.
 - The `Better tomorrow` community is one channel for now.
 - Bottom tabs should stay focused on `홈`, `Today`, `커뮤니티`, and `일기`. Stack recording screens are reached from Today/Home.
 - The active brand direction is minimal, typographic, black-and-white, and editorial. Avoid pastel stack cards and playful category colors.

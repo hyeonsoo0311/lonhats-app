@@ -54,7 +54,7 @@ async function searchPublicNutritionApi(query: string) {
   return data?.items ?? [];
 }
 
-export async function analyzeFoodInput(rawText: string) {
+export async function analyzeFoodInput(rawText: string, mealType = "식사") {
   const parsed = parseFoodText(rawText);
   const [externalFoods, localFoods] = await Promise.all([
     searchPublicNutritionApi(parsed.query),
@@ -71,7 +71,7 @@ export async function analyzeFoodInput(rawText: string) {
   const ratio = amountGram / best.servingGram;
 
   return {
-    mealType: "식사",
+    mealType,
     rawText,
     foodName: best.name,
     amountGram,
@@ -85,7 +85,7 @@ export async function analyzeFoodInput(rawText: string) {
   } satisfies Omit<MealLog, "id" | "eatenOn">;
 }
 
-export async function analyzeAndSaveMeal(userId: string, rawText: string) {
-  const analyzed = await analyzeFoodInput(rawText);
+export async function analyzeAndSaveMeal(userId: string, rawText: string, mealType = "식사") {
+  const analyzed = await analyzeFoodInput(rawText, mealType);
   return createMealLog(userId, analyzed);
 }

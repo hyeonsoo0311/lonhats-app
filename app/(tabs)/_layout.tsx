@@ -10,6 +10,7 @@ import {
   NotebookPen,
   Plus,
   SlidersHorizontal,
+  UserRound,
   Utensils
 } from "lucide-react-native";
 import { Redirect, Tabs } from "expo-router";
@@ -93,6 +94,15 @@ export default function TabLayout() {
           title: "Mind",
           tabBarLabel: "Mind",
           tabBarIcon: createTabIcon(NotebookPen)
+        }}
+      />
+      <Tabs.Screen
+        name="body"
+        options={{
+          href: null,
+          title: "Body",
+          tabBarLabel: "Body",
+          tabBarIcon: createTabIcon(UserRound)
         }}
       />
       <Tabs.Screen

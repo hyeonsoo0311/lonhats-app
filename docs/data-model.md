@@ -7,6 +7,7 @@
 - `life_gauge_criteria`: user-defined criteria for interpreting life temperature and humidity.
 - `life_routines`: user-defined routine criteria that drive life temperature and humidity.
 - `life_routine_checkins`: manual confirmations for routine criteria that cannot be inferred from stack records.
+- `body_logs`: private body state records.
 - `workout_logs`: supporting workout output table for MET and calorie estimates.
 - `exercise_catalog`: reusable exercise activity catalog with MET values.
 - `meal_logs`: supporting food and nutrition record table.
@@ -82,3 +83,19 @@ Every user-owned table includes `user_id uuid references auth.users(id)` and Row
 - `note`: optional context.
 
 When a routine has a related stack, matching `life_entries` can also count toward that routine's progress. Manual check-ins are used for criteria like water intake, screen-time limits, or waking up early.
+
+## Body Logs
+
+`body_logs` stores private user-owned body state records:
+
+- `measured_on`: record date.
+- `height_cm`: height.
+- `weight_kg`: weight.
+- `birth_date`: birth date.
+- `sex`: `female`, `male`, or `other`.
+- `skeletal_muscle_kg`: skeletal muscle mass.
+- `body_fat_percent`: body fat percentage.
+- `condition`: short user-facing condition label.
+- `note`: optional private note.
+
+Body logs are not automatically shared to the community.

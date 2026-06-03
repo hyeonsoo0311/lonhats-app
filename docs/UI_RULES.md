@@ -12,10 +12,11 @@ The interface should help the user say:
 
 The first screen should focus on:
 
-1. Today's records.
-2. The four stacks.
-3. Life temperature and humidity.
-4. A direct path to record something.
+1. Life temperature and humidity.
+2. Personal routine completion rate.
+3. Clear daily record entry points: `Meal`, `Move`, `Recovery`, `Mind`, and `Body`.
+4. Today's saved records.
+5. Meal slot status when available.
 
 Do not make a marketing-style landing page inside the app.
 

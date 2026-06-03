@@ -24,6 +24,10 @@ Make Lonhats usable as a record-based community app centered on `Today's Better`
 - Personal routine criteria for life temperature and humidity.
 - Minimal black-and-white brand direction.
 - Unified Today stack creation flow.
+- Daily Dashboard home structure.
+- Meal recording with meal slots, gram amount, and nutrition basis.
+- Recovery sleep recording with bedtime, wake time, and calculated sleep duration.
+- Private Body records.
 
 ## Near-Term Tasks
 

@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { defaultGaugeCriteria } from "@/lib/gauge";
 import type {
   AppNotice,
+  BodyLog,
   CommunityComment,
   CommunityPost,
   CommunityPostType,
@@ -112,6 +113,28 @@ function toMealLog(row: DbRecord): MealLog {
     source: row.source ?? null,
     sourceId: row.source_id ?? null,
     confidence: row.confidence ?? null
+  };
+}
+
+function toBodyLog(row: DbRecord): BodyLog {
+  return {
+    id: row.id,
+    measuredOn: row.measured_on,
+    heightCm: row.height_cm === null || row.height_cm === undefined ? null : Number(row.height_cm),
+    weightKg: row.weight_kg === null || row.weight_kg === undefined ? null : Number(row.weight_kg),
+    birthDate: row.birth_date ?? null,
+    sex: row.sex ?? null,
+    skeletalMuscleKg:
+      row.skeletal_muscle_kg === null || row.skeletal_muscle_kg === undefined
+        ? null
+        : Number(row.skeletal_muscle_kg),
+    bodyFatPercent:
+      row.body_fat_percent === null || row.body_fat_percent === undefined
+        ? null
+        : Number(row.body_fat_percent),
+    condition: row.condition ?? null,
+    note: row.note ?? null,
+    createdAt: row.created_at
   };
 }
 
@@ -633,6 +656,78 @@ export async function createMealLog(userId: string, input: Omit<MealLog, "id" | 
   }
 
   return toMealLog(data);
+}
+
+export async function getTodayBodyLogs(userId: string) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("body_logs")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("measured_on", today())
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(toBodyLog);
+}
+
+export async function getLatestBodyLog(userId: string) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("body_logs")
+    .select("*")
+    .eq("user_id", userId)
+    .order("measured_on", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ? toBodyLog(data) : null;
+}
+
+export async function createBodyLog(
+  userId: string,
+  input: {
+    heightCm?: number | null;
+    weightKg?: number | null;
+    birthDate?: string | null;
+    sex?: BodyLog["sex"];
+    skeletalMuscleKg?: number | null;
+    bodyFatPercent?: number | null;
+    condition?: string | null;
+    note?: string | null;
+  }
+) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("body_logs")
+    .insert({
+      user_id: userId,
+      measured_on: today(),
+      height_cm: input.heightCm ?? null,
+      weight_kg: input.weightKg ?? null,
+      birth_date: input.birthDate || null,
+      sex: input.sex ?? null,
+      skeletal_muscle_kg: input.skeletalMuscleKg ?? null,
+      body_fat_percent: input.bodyFatPercent ?? null,
+      condition: input.condition ?? null,
+      note: input.note ?? null
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return toBodyLog(data);
 }
 
 export async function searchFoodItems(query: string) {

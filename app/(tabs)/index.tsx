@@ -12,13 +12,16 @@ import { analyzeLifeDirection } from "@/lib/analysis";
 import { defaultGaugeCriteria, gaugeRangeLabel, scoreToLifeTemperature } from "@/lib/gauge";
 import {
   getAppNotices,
+  getLatestBodyLog,
   getLifeGaugeCriteria,
   getLifeRoutines,
   getRoutineCheckins,
   getTodayLifeEntries,
+  getTodayMealLogs,
+  getTodayWorkoutLogs,
   getWeeklyLifeEntries
 } from "@/lib/database";
-import { stackDescriptions, stackLabels } from "@/lib/life";
+import { stackLabels } from "@/lib/life";
 import type { LifeStackKey } from "@/types/domain";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
@@ -31,21 +34,46 @@ import {
   Moon,
   SlidersHorizontal,
   Thermometer,
+  UserRound,
   Utensils
 } from "lucide-react-native";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
-const stacks: {
-  key: LifeStackKey;
-  icon: typeof Footprints;
+const recordCards: {
+  key: "meal" | "move" | "recovery" | "mind" | "body";
+  title: string;
+  route: "/fuel" | "/train" | "/recovery" | "/reflect" | "/body";
+  icon: typeof Utensils;
 }[] = [
-  { key: "move", icon: Footprints },
-  { key: "meal", icon: Utensils },
-  { key: "recovery", icon: Moon },
-  { key: "mind", icon: Brain }
+  { key: "meal", title: "Meal", route: "/fuel", icon: Utensils },
+  { key: "move", title: "Move", route: "/train", icon: Footprints },
+  { key: "recovery", title: "Recovery", route: "/recovery", icon: Moon },
+  { key: "mind", title: "Mind", route: "/reflect", icon: Brain },
+  { key: "body", title: "Body", route: "/body", icon: UserRound }
 ];
 
-export default function TodayScreen() {
+const mealOrder = ["아침", "점심", "저녁", "간식"];
+
+function formatMinutes(minutes: number | null) {
+  if (!minutes) {
+    return "0분";
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+
+  if (!hours) {
+    return `${rest}분`;
+  }
+
+  return rest ? `${hours}시간 ${rest}분` : `${hours}시간`;
+}
+
+function numberText(value: number | null | undefined, suffix: string) {
+  return value === null || value === undefined ? "-" : `${value}${suffix}`;
+}
+
+export default function HomeScreen() {
   const { profile, signOut, user } = useAuth();
   const userId = user?.id ?? "";
   const displayName = profile?.displayName ?? user?.email ?? "사용자";
@@ -58,6 +86,21 @@ export default function TodayScreen() {
   const weeklyQuery = useQuery({
     queryKey: ["weekly-life", userId],
     queryFn: () => getWeeklyLifeEntries(userId),
+    enabled: Boolean(userId)
+  });
+  const mealsQuery = useQuery({
+    queryKey: ["today-meals", userId],
+    queryFn: () => getTodayMealLogs(userId),
+    enabled: Boolean(userId)
+  });
+  const workoutsQuery = useQuery({
+    queryKey: ["today-workouts", userId],
+    queryFn: () => getTodayWorkoutLogs(userId),
+    enabled: Boolean(userId)
+  });
+  const latestBodyQuery = useQuery({
+    queryKey: ["latest-body", userId],
+    queryFn: () => getLatestBodyLog(userId),
     enabled: Boolean(userId)
   });
   const noticesQuery = useQuery({
@@ -82,6 +125,9 @@ export default function TodayScreen() {
 
   const todayEntries = todayQuery.data ?? [];
   const weeklyEntries = weeklyQuery.data ?? [];
+  const mealLogs = mealsQuery.data ?? [];
+  const workoutLogs = workoutsQuery.data ?? [];
+  const latestBody = latestBodyQuery.data;
   const report = analyzeLifeDirection(weeklyEntries, {
     routines: routinesQuery.data ?? [],
     routineCheckins: checkinsQuery.data ?? []
@@ -92,6 +138,55 @@ export default function TodayScreen() {
   const temperatureMax = criteria?.temperatureMaxC ?? defaultGaugeCriteria.temperatureMaxC;
   const humidityMin = criteria?.humidityMinPercent ?? defaultGaugeCriteria.humidityMinPercent;
   const humidityMax = criteria?.humidityMaxPercent ?? defaultGaugeCriteria.humidityMaxPercent;
+  const calories = mealLogs.reduce((total, meal) => total + meal.calories, 0);
+  const protein = Math.round(mealLogs.reduce((total, meal) => total + meal.proteinGram, 0));
+  const workoutMinutes = workoutLogs.reduce((total, workout) => total + (workout.minutes ?? 0), 0);
+  const sleepEntry = todayEntries.find(
+    (entry) => entry.stack === "recovery" && entry.category === "수면"
+  );
+  const mindEntries = todayEntries.filter((entry) => entry.stack === "mind");
+  const completedStacks = new Set(todayEntries.map((entry) => entry.stack));
+
+  function recordSummary(key: (typeof recordCards)[number]["key"]) {
+    if (key === "meal") {
+      return mealLogs.length
+        ? `${mealLogs.length}개 · ${calories}kcal · 단백질 ${protein}g`
+        : "아침, 점심, 저녁, 간식을 남길 수 있습니다.";
+    }
+
+    if (key === "move") {
+      return workoutLogs.length
+        ? `${workoutLogs.length}개 · ${workoutMinutes}분`
+        : "운동 종류, 시간, 강도, 의미를 남깁니다.";
+    }
+
+    if (key === "recovery") {
+      return sleepEntry
+        ? `수면 ${formatMinutes(sleepEntry.durationMinutes)}`
+        : "취침, 기상, 수면 시간, 컨디션을 남깁니다.";
+    }
+
+    if (key === "mind") {
+      return mindEntries.length
+        ? `${mindEntries.length}개 · ${mindEntries[0]?.title ?? "Mind"}`
+        : "독서, 공부, 회고, 프로젝트 시간을 남깁니다.";
+    }
+
+    return latestBody
+      ? `체중 ${numberText(latestBody.weightKg, "kg")} · 체지방 ${numberText(
+          latestBody.bodyFatPercent,
+          "%"
+        )}`
+      : "신장, 체중, 골격근량, 체지방률을 개인 기록으로 남깁니다.";
+  }
+
+  function recordComplete(key: (typeof recordCards)[number]["key"]) {
+    if (key === "body") {
+      return Boolean(latestBody && latestBody.measuredOn === new Date().toISOString().slice(0, 10));
+    }
+
+    return completedStacks.has(key as LifeStackKey);
+  }
 
   return (
     <ScrollView
@@ -101,13 +196,13 @@ export default function TodayScreen() {
     >
       <View style={{ gap: spacing.sm, paddingTop: spacing.sm }}>
         <Text selectable style={{ color: colors.mutedInk, fontSize: 12, fontWeight: "900" }}>
-          LONHATS
+          LONHATS DAILY
         </Text>
         <Text selectable style={{ color: colors.ink, fontSize: 34, fontWeight: "900" }}>
           {displayName}의 오늘
         </Text>
         <Text selectable style={{ color: colors.mutedInk, fontSize: 15, lineHeight: 22 }}>
-          작은 것을 쌓고, 필요할 때만 나눕니다. 비교가 아니라 방향을 봅니다.
+          기록할 항목을 분명히 보고, 필요한 만큼만 남깁니다.
         </Text>
       </View>
 
@@ -118,7 +213,6 @@ export default function TodayScreen() {
             label="삶의 온도"
             value={`${lifeTemperature.toFixed(1)}°C`}
             helper={gaugeRangeLabel(lifeTemperature, temperatureMin, temperatureMax, "°C")}
-            tone="mint"
           />
         </View>
         <View style={{ flex: 1 }}>
@@ -127,59 +221,122 @@ export default function TodayScreen() {
             label="삶의 습도"
             value={`${report.humidity}%`}
             helper={gaugeRangeLabel(report.humidity, humidityMin, humidityMax, "%")}
-            tone="sky"
           />
         </View>
       </View>
-      <View style={{ alignItems: "flex-end" }}>
-        <Pressable
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={() => router.push("/criteria")}
-          style={({ pressed }) => ({
-            alignItems: "center",
-            flexDirection: "row",
-            gap: spacing.xs,
-            opacity: pressed ? 0.62 : 1,
-            paddingVertical: spacing.xs
-          })}
-        >
-          <SlidersHorizontal color={colors.ink} size={14} strokeWidth={2.4} />
-          <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "900" }}>기준 조정</Text>
-        </Pressable>
-      </View>
 
-      <ScreenSection title="Stack">
+      <ScreenSection title="오늘의 기준">
+        <AppCard tone="plain">
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <ChartNoAxesColumn color={colors.ink} size={22} strokeWidth={2.4} />
+            <View style={{ flex: 1, gap: spacing.xs }}>
+              <Text selectable style={{ color: colors.ink, fontSize: 20, fontWeight: "900" }}>
+                기준 완료율 {report.routineScore}%
+              </Text>
+              <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
+                {report.message}
+              </Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+            {report.routineSignals.length ? (
+              report.routineSignals
+                .slice(0, 4)
+                .map((signal) => (
+                  <Pill
+                    key={signal.routineId}
+                    label={`${signal.title} ${signal.actualCount}/${signal.expectedCount}`}
+                    active={signal.progress >= 80}
+                  />
+                ))
+            ) : (
+              <Pill label="기준을 추가하면 완료율이 계산됩니다." />
+            )}
+          </View>
+          <View style={{ alignItems: "flex-start" }}>
+            <Pressable
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={() => router.push("/criteria")}
+              style={({ pressed }) => ({
+                alignItems: "center",
+                flexDirection: "row",
+                gap: spacing.xs,
+                opacity: pressed ? 0.62 : 1,
+                paddingVertical: spacing.xs
+              })}
+            >
+              <SlidersHorizontal color={colors.ink} size={14} strokeWidth={2.4} />
+              <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "900" }}>기준 조정</Text>
+            </Pressable>
+          </View>
+        </AppCard>
+      </ScreenSection>
+
+      <ScreenSection title="오늘 기록">
         <View style={{ gap: spacing.sm }}>
-          {stacks.map((stack) => {
-            const Icon = stack.icon;
-            const todayCount = todayEntries.filter((entry) => entry.stack === stack.key).length;
+          {recordCards.map((card) => {
+            const Icon = card.icon;
+            const complete = recordComplete(card.key);
 
             return (
-              <AppCard key={stack.key} tone="plain">
-                <View style={{ flexDirection: "row", gap: spacing.sm }}>
-                  <Icon color={colors.ink} size={22} strokeWidth={2.4} />
-                  <View style={{ flex: 1, gap: spacing.xs }}>
-                    <Text selectable style={{ color: colors.ink, fontSize: 18, fontWeight: "900" }}>
-                      {stackLabels[stack.key]}
-                    </Text>
-                    <Text
-                      selectable
-                      style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}
-                    >
-                      {stackDescriptions[stack.key]} · 오늘 {todayCount}개
-                    </Text>
+              <Pressable
+                key={card.key}
+                accessibilityRole="button"
+                onPress={() => router.push(card.route)}
+              >
+                <AppCard tone="plain">
+                  <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.sm }}>
+                    <Icon color={colors.ink} size={22} strokeWidth={2.4} />
+                    <View style={{ flex: 1, gap: spacing.xs }}>
+                      <Text
+                        selectable
+                        style={{ color: colors.ink, fontSize: 18, fontWeight: "900" }}
+                      >
+                        {card.title}
+                      </Text>
+                      <Text
+                        selectable
+                        style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}
+                      >
+                        {recordSummary(card.key)}
+                      </Text>
+                    </View>
+                    <Pill label={complete ? "완료" : "추가"} active={complete} />
                   </View>
-                </View>
-              </AppCard>
+                </AppCard>
+              </Pressable>
             );
           })}
         </View>
       </ScreenSection>
 
-      <ScreenSection title="오늘 쌓은 것">
+      <ScreenSection title="끼니 요약">
+        <AppCard tone="plain">
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+            {mealOrder.map((type) => {
+              const typedLogs = mealLogs.filter((meal) => meal.mealType === type);
+
+              return (
+                <Pill
+                  key={type}
+                  label={`${type} ${typedLogs.length ? `${typedLogs.length}개` : "비어 있음"}`}
+                  active={typedLogs.length > 0}
+                />
+              );
+            })}
+          </View>
+          <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
+            {mealLogs.length
+              ? `오늘 ${calories}kcal, 단백질 ${protein}g을 기록했습니다.`
+              : "끼니별로 음식명과 g 단위를 남기면 영양 기준이 선명해집니다."}
+          </Text>
+        </AppCard>
+      </ScreenSection>
+
+      <ScreenSection title="오늘 남긴 것">
         {todayEntries.length ? (
-          todayEntries.slice(0, 6).map((entry) => (
+          todayEntries.slice(0, 5).map((entry) => (
             <AppCard key={entry.id} tone="plain">
               <Text selectable style={{ color: colors.ink, fontSize: 17, fontWeight: "900" }}>
                 {stackLabels[entry.stack]} · {entry.title}
@@ -191,56 +348,10 @@ export default function TodayScreen() {
           ))
         ) : (
           <EmptyState
-            title="아직 오늘 쌓은 것이 없습니다."
-            body="한 줄이라도 남기면 오늘의 온도와 습도가 생깁니다."
+            title="아직 오늘 남긴 것이 없습니다."
+            body="Meal, Move, Recovery, Mind, Body 중 하나부터 시작하세요."
           />
         )}
-      </ScreenSection>
-
-      <ScreenSection title="주간 방향">
-        <AppCard tone="plain">
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <ChartNoAxesColumn color={colors.tomato} size={22} strokeWidth={2.4} />
-            <View style={{ flex: 1, gap: spacing.xs }}>
-              <Text selectable style={{ color: colors.ink, fontSize: 18, fontWeight: "900" }}>
-                루틴 점수 {report.routineScore}
-              </Text>
-              <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
-                {report.message}
-              </Text>
-            </View>
-          </View>
-          {report.hasRoutineCriteria ? (
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-              {report.routineSignals.slice(0, 3).map((signal) => (
-                <Pill
-                  key={signal.routineId}
-                  label={`${signal.title} ${signal.actualCount}/${signal.expectedCount}`}
-                  active={signal.progress >= 80}
-                />
-              ))}
-            </View>
-          ) : null}
-          <View style={{ alignItems: "flex-start" }}>
-            <Pressable
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={() => router.push("/insights")}
-              style={({ pressed }) => ({
-                alignItems: "center",
-                flexDirection: "row",
-                gap: spacing.xs,
-                opacity: pressed ? 0.62 : 1,
-                paddingVertical: spacing.xs
-              })}
-            >
-              <ChartNoAxesColumn color={colors.ink} size={14} strokeWidth={2.4} />
-              <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "900" }}>
-                Report 보기
-              </Text>
-            </Pressable>
-          </View>
-        </AppCard>
       </ScreenSection>
 
       <ScreenSection title="공지">

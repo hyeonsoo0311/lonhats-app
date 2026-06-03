@@ -20,12 +20,52 @@ function toNumber(value: string) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+function timeToMinutes(value: string) {
+  const [hourText, minuteText] = value.split(":");
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+    return null;
+  }
+
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    return null;
+  }
+
+  return hour * 60 + minute;
+}
+
+function sleepMinutesFrom(bedtime: string, wakeTime: string) {
+  const bed = timeToMinutes(bedtime);
+  const wake = timeToMinutes(wakeTime);
+
+  if (bed === null || wake === null) {
+    return null;
+  }
+
+  const diff = wake >= bed ? wake - bed : 24 * 60 - bed + wake;
+  return diff > 0 ? diff : null;
+}
+
+function formatSleep(minutes: number | null) {
+  if (!minutes) {
+    return "계산 전";
+  }
+
+  const hour = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  return `${hour}시간 ${minute}분`;
+}
+
 export default function RecoveryScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const userId = user?.id ?? "";
   const [category, setCategory] = useState("수면");
-  const [duration, setDuration] = useState("7");
+  const [bedtime, setBedtime] = useState("23:30");
+  const [wakeTime, setWakeTime] = useState("07:00");
+  const [duration, setDuration] = useState("30");
   const [score, setScore] = useState(recoveryScores[2]);
   const [meaning, setMeaning] = useState("오늘의 몸을 조금 되돌려 놓았다.");
   const [note, setNote] = useState("");
@@ -37,20 +77,28 @@ export default function RecoveryScreen() {
     enabled: Boolean(userId)
   });
   const recoveryEntries = (entriesQuery.data ?? []).filter((entry) => entry.stack === "recovery");
+  const sleepMinutes = sleepMinutesFrom(bedtime, wakeTime);
+  const resolvedDurationMinutes = category === "수면" ? sleepMinutes : toNumber(duration);
 
   const saveMutation = useMutation({
     mutationFn: () =>
       createLifeEntry(userId, {
         stack: "recovery",
         category,
-        title: `${category} · ${score.label}`,
-        durationMinutes: category === "수면" ? (toNumber(duration) ?? 0) * 60 : toNumber(duration),
+        title:
+          category === "수면"
+            ? `수면 · ${formatSleep(sleepMinutes)}`
+            : `${category} · ${duration || 0}분`,
+        durationMinutes: resolvedDurationMinutes,
         meaning: meaning.trim(),
         note: note.trim() || null,
         score: score.value,
         details: {
           recoveryLevel: score.label,
-          rawDuration: duration
+          bedtime: category === "수면" ? bedtime : null,
+          wakeTime: category === "수면" ? wakeTime : null,
+          sleepMinutes: category === "수면" ? sleepMinutes : null,
+          rawDuration: category === "수면" ? formatSleep(sleepMinutes) : duration
         }
       }),
     onSuccess: () => {
@@ -71,6 +119,11 @@ export default function RecoveryScreen() {
   function handleSave() {
     if (!meaning.trim()) {
       setError("오늘 회복의 의미를 남겨주세요.");
+      return;
+    }
+
+    if (category === "수면" && !sleepMinutes) {
+      setError("취침 시간과 기상 시간을 HH:MM 형식으로 입력해주세요.");
       return;
     }
 
@@ -106,12 +159,33 @@ export default function RecoveryScreen() {
               </Pressable>
             ))}
           </View>
-          <Field
-            keyboardType="numeric"
-            value={duration}
-            onChangeText={setDuration}
-            placeholder={category === "수면" ? "수면 시간(시간)" : "회복 시간(분)"}
-          />
+          {category === "수면" ? (
+            <>
+              <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                <View style={{ flex: 1 }}>
+                  <Field value={bedtime} onChangeText={setBedtime} placeholder="취침 HH:MM" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Field value={wakeTime} onChangeText={setWakeTime} placeholder="기상 HH:MM" />
+                </View>
+              </View>
+              <AppCard tone="plain">
+                <Text selectable style={{ color: colors.ink, fontSize: 17, fontWeight: "900" }}>
+                  총 수면 {formatSleep(sleepMinutes)}
+                </Text>
+                <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}>
+                  취침 {bedtime} · 기상 {wakeTime}
+                </Text>
+              </AppCard>
+            </>
+          ) : (
+            <Field
+              keyboardType="numeric"
+              value={duration}
+              onChangeText={setDuration}
+              placeholder="회복 시간(분)"
+            />
+          )}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
             {recoveryScores.map((item) => (
               <Pressable key={item.label} accessibilityRole="button" onPress={() => setScore(item)}>
