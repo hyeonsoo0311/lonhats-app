@@ -6,6 +6,8 @@ export type LifeStackKey = "move" | "meal" | "recovery" | "mind";
 
 export type LifeIntensity = "light" | "moderate" | "hard" | "limit";
 
+export type RoutineCadence = "daily" | "weekly" | "monthly";
+
 export type CommunityPostType = "discussion" | "proof";
 
 export type CommunityProofKind = "daily_better" | "challenge_day" | "weekly_share";
@@ -184,6 +186,8 @@ export type LifeDirectionReport = {
   recoveryDays: number;
   mindDays: number;
   signals: StackSignal[];
+  routineSignals: RoutineSignal[];
+  hasRoutineCriteria: boolean;
   message: string;
 };
 
@@ -202,6 +206,43 @@ export type LifeGaugeCriteria = {
   humidityLowNote: string | null;
   humidityHighNote: string | null;
   updatedAt: string;
+};
+
+export type LifeRoutine = {
+  id: string;
+  userId: string;
+  title: string;
+  stack: LifeStackKey | null;
+  cadence: RoutineCadence;
+  targetCount: number;
+  temperatureWeight: number;
+  humidityWeight: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RoutineCheckin = {
+  id: string;
+  routineId: string;
+  userId: string;
+  checkedOn: string;
+  completed: boolean;
+  note: string | null;
+  createdAt: string;
+};
+
+export type RoutineSignal = {
+  routineId: string;
+  title: string;
+  stack: LifeStackKey | null;
+  cadence: RoutineCadence;
+  expectedCount: number;
+  actualCount: number;
+  progress: number;
+  temperatureWeight: number;
+  humidityWeight: number;
+  message: string;
 };
 
 export type WeeklyAnalysisInput = {

@@ -2,7 +2,8 @@ import { AppCard, EmptyState, MetricCard, Pill, ScreenSection } from "@/componen
 import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
 import { analyzeLifeDirection } from "@/lib/analysis";
-import { getWeeklyLifeEntries } from "@/lib/database";
+import { getLifeRoutines, getRoutineCheckins, getWeeklyLifeEntries } from "@/lib/database";
+import { scoreToLifeTemperature } from "@/lib/gauge";
 import { stackDescriptions, stackLabels } from "@/lib/life";
 import type { LifeStackKey } from "@/types/domain";
 import { useQuery } from "@tanstack/react-query";
@@ -32,8 +33,22 @@ export default function InsightsScreen() {
     queryFn: () => getWeeklyLifeEntries(userId),
     enabled: Boolean(userId)
   });
+  const routinesQuery = useQuery({
+    queryKey: ["life-routines", userId],
+    queryFn: () => getLifeRoutines(userId),
+    enabled: Boolean(userId)
+  });
+  const checkinsQuery = useQuery({
+    queryKey: ["routine-checkins", userId],
+    queryFn: () => getRoutineCheckins(userId),
+    enabled: Boolean(userId)
+  });
   const entries = weeklyQuery.data ?? [];
-  const report = analyzeLifeDirection(entries);
+  const report = analyzeLifeDirection(entries, {
+    routines: routinesQuery.data ?? [],
+    routineCheckins: checkinsQuery.data ?? []
+  });
+  const lifeTemperature = scoreToLifeTemperature(report.temperature);
 
   return (
     <ScrollView
@@ -46,8 +61,8 @@ export default function InsightsScreen() {
           <MetricCard
             icon={Thermometer}
             label="온도"
-            value={`${report.temperature}°`}
-            helper="Move와 Mind의 에너지"
+            value={`${lifeTemperature.toFixed(1)}°C`}
+            helper={report.hasRoutineCriteria ? "나의 기준 유지율" : "Move와 Mind의 에너지"}
             tone="mint"
           />
         </View>
@@ -56,7 +71,7 @@ export default function InsightsScreen() {
             icon={Droplets}
             label="습도"
             value={`${report.humidity}%`}
-            helper="Recovery와 규칙성"
+            helper={report.hasRoutineCriteria ? "회복과 리듬 기준" : "Recovery와 규칙성"}
             tone="sky"
           />
         </View>
@@ -87,6 +102,52 @@ export default function InsightsScreen() {
           <EmptyState
             title="리포트를 만들 기록이 부족합니다."
             body="이번 주에 네 stack 중 하나라도 남기면 삶의 방향 리포트가 시작됩니다."
+          />
+        )}
+      </ScreenSection>
+
+      <ScreenSection title="기준 루틴">
+        {report.routineSignals.length ? (
+          <View style={{ gap: spacing.sm }}>
+            {report.routineSignals.map((signal) => (
+              <AppCard key={signal.routineId} tone="plain">
+                <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                  <ChartNoAxesColumn color={colors.ink} size={22} strokeWidth={2.4} />
+                  <View style={{ flex: 1, gap: spacing.xs }}>
+                    <Text selectable style={{ color: colors.ink, fontSize: 18, fontWeight: "900" }}>
+                      {signal.title} · {signal.progress}%
+                    </Text>
+                    <Text
+                      selectable
+                      style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}
+                    >
+                      {signal.message}
+                    </Text>
+                  </View>
+                </View>
+                <View
+                  style={{
+                    backgroundColor: colors.paper,
+                    borderRadius: 999,
+                    height: 10,
+                    overflow: "hidden"
+                  }}
+                >
+                  <View
+                    style={{
+                      backgroundColor: colors.moss,
+                      height: 10,
+                      width: `${Math.max(signal.progress, 3)}%`
+                    }}
+                  />
+                </View>
+              </AppCard>
+            ))}
+          </View>
+        ) : (
+          <EmptyState
+            title="아직 기준 루틴이 없습니다."
+            body="Home의 기준 조정에서 나만의 루틴을 정하면 온도와 습도가 그 기준을 따라 움직입니다."
           />
         )}
       </ScreenSection>

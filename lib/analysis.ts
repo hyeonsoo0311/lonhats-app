@@ -1,14 +1,20 @@
 import type {
   LifeDirectionReport,
   LifeEntry,
+  LifeRoutine,
   LifeStackKey,
   MealEntry,
+  RoutineCadence,
+  RoutineCheckin,
+  RoutineSignal,
   StackSignal,
   WeeklyAnalysisInput,
   WeeklyRecommendation
 } from "@/types/domain";
+import { adherenceToLifeHumidity, adherenceToLifeTemperatureScore } from "@/lib/gauge";
 
 const round = (value: number) => Math.round(value);
+const dayInMs = 24 * 60 * 60 * 1000;
 
 export function sumMealCalories(entries: MealEntry[]) {
   return entries.reduce((total, entry) => total + entry.calories, 0);
@@ -80,6 +86,109 @@ function clamp(value: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));
 }
 
+function dateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getRoutinePeriodStart(cadence: RoutineCadence, referenceDate: Date) {
+  if (cadence === "monthly") {
+    return new Date(Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), 1));
+  }
+
+  const start = new Date(referenceDate);
+  start.setUTCDate(referenceDate.getUTCDate() - 6);
+  return start;
+}
+
+function countDaysInclusive(start: Date, end: Date) {
+  return Math.max(1, Math.floor((end.getTime() - start.getTime()) / dayInMs) + 1);
+}
+
+function getRoutineExpectedCount(routine: LifeRoutine, start: Date, end: Date) {
+  if (routine.cadence === "daily") {
+    return countDaysInclusive(start, end);
+  }
+
+  return Math.max(1, routine.targetCount);
+}
+
+function buildRoutineMessage(progress: number, actualCount: number, expectedCount: number) {
+  if (progress >= 100) {
+    return `기준을 지켰습니다 · ${actualCount}/${expectedCount}`;
+  }
+
+  if (progress >= 60) {
+    return `조금 흔들렸지만 이어지고 있습니다 · ${actualCount}/${expectedCount}`;
+  }
+
+  return `이번 기간에는 기준이 많이 비어 있습니다 · ${actualCount}/${expectedCount}`;
+}
+
+function buildRoutineSignals(
+  entries: LifeEntry[],
+  routines: LifeRoutine[],
+  checkins: RoutineCheckin[],
+  referenceDate: Date
+) {
+  return routines
+    .filter((routine) => routine.isActive)
+    .slice(0, 7)
+    .map((routine): RoutineSignal => {
+      const end = new Date(referenceDate);
+      const start = getRoutinePeriodStart(routine.cadence, end);
+      const startKey = dateKey(start);
+      const completedDates = new Set(
+        checkins
+          .filter(
+            (checkin) =>
+              checkin.routineId === routine.id && checkin.completed && checkin.checkedOn >= startKey
+          )
+          .map((checkin) => checkin.checkedOn)
+      );
+
+      if (routine.stack) {
+        entries
+          .filter((entry) => entry.stack === routine.stack && entry.entryDate >= startKey)
+          .forEach((entry) => completedDates.add(entry.entryDate));
+      }
+
+      const expectedCount = getRoutineExpectedCount(routine, start, end);
+      const actualCount = completedDates.size;
+      const progress = clamp(round((actualCount / expectedCount) * 100));
+
+      return {
+        routineId: routine.id,
+        title: routine.title,
+        stack: routine.stack,
+        cadence: routine.cadence,
+        expectedCount,
+        actualCount,
+        progress,
+        temperatureWeight: routine.temperatureWeight,
+        humidityWeight: routine.humidityWeight,
+        message: buildRoutineMessage(progress, actualCount, expectedCount)
+      };
+    });
+}
+
+function weightedAverage(signals: RoutineSignal[], key: "temperatureWeight" | "humidityWeight") {
+  const weighted = signals.reduce(
+    (result, signal) => ({
+      score: result.score + signal.progress * signal[key],
+      weight: result.weight + signal[key]
+    }),
+    { score: 0, weight: 0 }
+  );
+
+  if (!weighted.weight) {
+    return signals.length
+      ? round(signals.reduce((total, signal) => total + signal.progress, 0) / signals.length)
+      : 0;
+  }
+
+  return round(weighted.score / weighted.weight);
+}
+
 function buildSignal(
   stack: LifeStackKey,
   count: number,
@@ -95,7 +204,14 @@ function buildSignal(
   };
 }
 
-export function analyzeLifeDirection(entries: LifeEntry[]): LifeDirectionReport {
+export function analyzeLifeDirection(
+  entries: LifeEntry[],
+  options: {
+    routines?: LifeRoutine[];
+    routineCheckins?: RoutineCheckin[];
+    referenceDate?: Date;
+  } = {}
+): LifeDirectionReport {
   const movementMinutes = entries
     .filter((entry) => entry.stack === "move")
     .reduce((total, entry) => total + (entry.durationMinutes ?? 0), 0);
@@ -115,6 +231,24 @@ export function analyzeLifeDirection(entries: LifeEntry[]): LifeDirectionReport 
     round(movementScore * 0.45 + mindScore * 0.25 + mealScore * 0.2 + recoveryScore * 0.1)
   );
   const humidity = clamp(round(recoveryScore * 0.55 + mealScore * 0.2 + mindScore * 0.25));
+  const routineSignals = buildRoutineSignals(
+    entries,
+    options.routines ?? [],
+    options.routineCheckins ?? [],
+    options.referenceDate ?? new Date()
+  );
+  const hasRoutineCriteria = routineSignals.length > 0;
+  const routineAdherence = hasRoutineCriteria
+    ? round(
+        routineSignals.reduce((total, signal) => total + signal.progress, 0) / routineSignals.length
+      )
+    : routineScore;
+  const routineTemperature = hasRoutineCriteria
+    ? adherenceToLifeTemperatureScore(weightedAverage(routineSignals, "temperatureWeight"))
+    : temperature;
+  const routineHumidity = hasRoutineCriteria
+    ? adherenceToLifeHumidity(weightedAverage(routineSignals, "humidityWeight"))
+    : humidity;
 
   const signals = [
     buildSignal(
@@ -151,22 +285,31 @@ export function analyzeLifeDirection(entries: LifeEntry[]): LifeDirectionReport 
     )
   ];
 
-  const message =
+  const fallbackMessage =
     routineScore >= 75
       ? "이번 주는 삶의 온도와 습도가 안정적입니다. 지금의 리듬을 크게 흔들 필요는 없습니다."
       : routineScore >= 45
         ? "이번 주는 일부 stack은 살아 있고 일부는 비어 있습니다. 부족한 stack 하나만 골라 작게 보완하세요."
         : "이번 주는 기록의 밀도가 낮습니다. 성과보다 상태를 보는 기록부터 다시 시작하는 것이 좋습니다.";
 
+  const routineMessage =
+    routineAdherence >= 85
+      ? "내가 정한 기준이 대체로 유지되고 있습니다. 온도와 습도는 안정권에 가깝습니다."
+      : routineAdherence >= 55
+        ? "일부 기준은 이어졌고 일부는 흔들렸습니다. 가장 작은 기준 하나만 다시 붙잡아도 충분합니다."
+        : "이번 기간에는 내가 정한 기준이 많이 비어 있습니다. 실패가 아니라 현재 상태를 보는 신호입니다.";
+
   return {
-    temperature,
-    humidity,
-    routineScore,
+    temperature: routineTemperature,
+    humidity: routineHumidity,
+    routineScore: hasRoutineCriteria ? routineAdherence : routineScore,
     movementMinutes,
     mealDays,
     recoveryDays,
     mindDays,
     signals,
-    message
+    routineSignals,
+    hasRoutineCriteria,
+    message: hasRoutineCriteria ? routineMessage : fallbackMessage
   };
 }

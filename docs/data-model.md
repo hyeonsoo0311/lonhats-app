@@ -5,6 +5,8 @@
 - `profiles`: display name, app role, body data, and user preferences.
 - `life_entries`: shared record table for Move, Meal, Recovery, and Mind.
 - `life_gauge_criteria`: user-defined criteria for interpreting life temperature and humidity.
+- `life_routines`: user-defined routine criteria that drive life temperature and humidity.
+- `life_routine_checkins`: manual confirmations for routine criteria that cannot be inferred from stack records.
 - `workout_logs`: supporting workout output table for MET and calorie estimates.
 - `exercise_catalog`: reusable exercise activity catalog with MET values.
 - `meal_logs`: supporting food and nutrition record table.
@@ -61,3 +63,22 @@ Every user-owned table includes `user_id uuid references auth.users(id)` and Row
 - `humidity_definition`: what life humidity means to the user.
 - `humidity_low_note`: how low humidity shows up.
 - `humidity_high_note`: how overly high humidity shows up.
+
+`life_routines` stores the user's personal routine criteria:
+
+- `title`: user-facing routine name, such as `주 3회 운동 가기`.
+- `stack`: optional related stack, or `null` for general life criteria.
+- `cadence`: `daily`, `weekly`, or `monthly`.
+- `target_count`: expected completion count for weekly or monthly routines.
+- `temperature_weight`: how strongly the routine affects life temperature.
+- `humidity_weight`: how strongly the routine affects life humidity.
+- `is_active`: inactive routines stay out of new calculations.
+
+`life_routine_checkins` stores manual routine confirmations:
+
+- `routine_id`: the routine being checked.
+- `checked_on`: the day the user kept the routine.
+- `completed`: whether the routine was kept.
+- `note`: optional context.
+
+When a routine has a related stack, matching `life_entries` can also count toward that routine's progress. Manual check-ins are used for criteria like water intake, screen-time limits, or waking up early.

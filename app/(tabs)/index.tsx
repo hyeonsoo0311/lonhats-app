@@ -1,4 +1,11 @@
-import { AppCard, EmptyState, MetricCard, SecondaryButton, ScreenSection } from "@/components/ui";
+import {
+  AppCard,
+  EmptyState,
+  MetricCard,
+  Pill,
+  SecondaryButton,
+  ScreenSection
+} from "@/components/ui";
 import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
 import { analyzeLifeDirection } from "@/lib/analysis";
@@ -6,6 +13,8 @@ import { defaultGaugeCriteria, gaugeRangeLabel, scoreToLifeTemperature } from "@
 import {
   getAppNotices,
   getLifeGaugeCriteria,
+  getLifeRoutines,
+  getRoutineCheckins,
   getTodayLifeEntries,
   getWeeklyLifeEntries
 } from "@/lib/database";
@@ -60,10 +69,23 @@ export default function TodayScreen() {
     queryFn: () => getLifeGaugeCriteria(userId),
     enabled: Boolean(userId)
   });
+  const routinesQuery = useQuery({
+    queryKey: ["life-routines", userId],
+    queryFn: () => getLifeRoutines(userId),
+    enabled: Boolean(userId)
+  });
+  const checkinsQuery = useQuery({
+    queryKey: ["routine-checkins", userId],
+    queryFn: () => getRoutineCheckins(userId),
+    enabled: Boolean(userId)
+  });
 
   const todayEntries = todayQuery.data ?? [];
   const weeklyEntries = weeklyQuery.data ?? [];
-  const report = analyzeLifeDirection(weeklyEntries);
+  const report = analyzeLifeDirection(weeklyEntries, {
+    routines: routinesQuery.data ?? [],
+    routineCheckins: checkinsQuery.data ?? []
+  });
   const criteria = criteriaQuery.data;
   const lifeTemperature = scoreToLifeTemperature(report.temperature);
   const temperatureMin = criteria?.temperatureMinC ?? defaultGaugeCriteria.temperatureMinC;
@@ -188,6 +210,17 @@ export default function TodayScreen() {
               </Text>
             </View>
           </View>
+          {report.hasRoutineCriteria ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+              {report.routineSignals.slice(0, 3).map((signal) => (
+                <Pill
+                  key={signal.routineId}
+                  label={`${signal.title} ${signal.actualCount}/${signal.expectedCount}`}
+                  active={signal.progress >= 80}
+                />
+              ))}
+            </View>
+          ) : null}
           <View style={{ alignItems: "flex-start" }}>
             <Pressable
               accessibilityRole="button"

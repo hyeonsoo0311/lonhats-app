@@ -123,8 +123,8 @@ It should answer:
 
 Current report concepts:
 
-- Life temperature: movement and mental momentum.
-- Life humidity: recovery, steadiness, and rhythm.
+- Life temperature: the user's personal routine criteria for movement, effort, and momentum.
+- Life humidity: the user's personal routine criteria for recovery, steadiness, and rhythm.
 - Routine score: overall stack consistency.
 - Stack signals: simple messages for Move, Meal, Recovery, Mind.
 
@@ -151,6 +151,12 @@ The criteria page should support:
 - Default optimal life humidity range: `40%` to `50%`.
 - User-configurable temperature range.
 - User-configurable humidity range.
+- User-defined routine criteria.
+- Daily, weekly, and monthly routine cadence.
+- Routine targets such as waking up early, drinking water, exercising weekly, limiting reels, reading monthly, studying, or recovering.
+- Routine association with `Move`, `Meal`, `Recovery`, `Mind`, or general `Life`.
+- Manual routine check-ins for criteria that cannot be inferred from stack records.
+- Automatic routine progress from matching stack records when possible.
 - What temperature means to the user.
 - What low temperature means.
 - What overly high temperature means.
@@ -158,7 +164,7 @@ The criteria page should support:
 - What low humidity means.
 - What overly high humidity means.
 
-The home screen can compare the current report against the user's saved criteria.
+The home screen compares the current report against the user's saved criteria. If the user has active routine criteria, life temperature and humidity should be based on how those routines are maintained. If no routine criteria exist yet, the app can fall back to stack-record analysis.
 
 ## Community
 

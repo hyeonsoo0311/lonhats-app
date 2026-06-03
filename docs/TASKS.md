@@ -21,6 +21,7 @@ Make Lonhats usable as a record-based community app centered on `Today's Better`
 - Small proof feed and detail UI.
 - Separate diary screen.
 - Personal life temperature and humidity criteria.
+- Personal routine criteria for life temperature and humidity.
 - Minimal black-and-white brand direction.
 - Unified Today stack creation flow.
 

@@ -1,6 +1,13 @@
 import { analyzeLifeDirection, analyzeWeek, sumMealCalories } from "@/lib/analysis";
 import { buildProofTitle, formatLifeEntryProofSummary } from "@/lib/community";
-import type { DaySummary, LifeEntry, LifeStackKey, MealEntry } from "@/types/domain";
+import type {
+  DaySummary,
+  LifeEntry,
+  LifeRoutine,
+  LifeStackKey,
+  MealEntry,
+  RoutineCheckin
+} from "@/types/domain";
 import { describe, expect, it } from "vitest";
 
 function lifeEntry(
@@ -65,6 +72,50 @@ describe("analysis helpers", () => {
     expect(report.humidity).toBeGreaterThan(40);
     expect(report.signals).toHaveLength(4);
     expect(report.signals.find((signal) => signal.stack === "move")?.score).toBe(100);
+  });
+
+  it("uses personal routine criteria when routines exist", () => {
+    const entries: LifeEntry[] = [
+      lifeEntry("move", "2026-06-01", { durationMinutes: 30 }),
+      lifeEntry("move", "2026-06-03", { durationMinutes: 30 })
+    ];
+    const routines: LifeRoutine[] = [
+      {
+        id: "routine-move",
+        userId: "user-1",
+        title: "주 3회 운동 가기",
+        stack: "move",
+        cadence: "weekly",
+        targetCount: 3,
+        temperatureWeight: 3,
+        humidityWeight: 1,
+        isActive: true,
+        createdAt: "2026-06-01T00:00:00.000Z",
+        updatedAt: "2026-06-01T00:00:00.000Z"
+      }
+    ];
+    const checkins: RoutineCheckin[] = [
+      {
+        id: "checkin-1",
+        routineId: "routine-move",
+        userId: "user-1",
+        checkedOn: "2026-06-05",
+        completed: true,
+        note: null,
+        createdAt: "2026-06-05T00:00:00.000Z"
+      }
+    ];
+
+    const report = analyzeLifeDirection(entries, {
+      routines,
+      routineCheckins: checkins,
+      referenceDate: new Date("2026-06-07T00:00:00.000Z")
+    });
+
+    expect(report.hasRoutineCriteria).toBe(true);
+    expect(report.routineScore).toBe(100);
+    expect(report.routineSignals[0]?.actualCount).toBe(3);
+    expect(report.message).toContain("내가 정한 기준");
   });
 
   it("formats small proof community text", () => {

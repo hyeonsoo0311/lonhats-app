@@ -14,9 +14,12 @@ import type {
   LifeGaugeCriteria,
   LifeEntry,
   LifeIntensity,
+  LifeRoutine,
   LifeStackKey,
   MealLog,
   Profile,
+  RoutineCadence,
+  RoutineCheckin,
   WorkoutLog
 } from "@/types/domain";
 
@@ -38,6 +41,13 @@ function weekStartDate() {
   const end = new Date();
   const start = new Date();
   start.setDate(end.getDate() - 6);
+  return start.toISOString().slice(0, 10);
+}
+
+function routineWindowStartDate() {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - 40);
   return start.toISOString().slice(0, 10);
 }
 
@@ -193,6 +203,34 @@ function toLifeGaugeCriteria(row: DbRecord): LifeGaugeCriteria {
     humidityLowNote: row.humidity_low_note ?? null,
     humidityHighNote: row.humidity_high_note ?? null,
     updatedAt: row.updated_at
+  };
+}
+
+function toLifeRoutine(row: DbRecord): LifeRoutine {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    title: row.title,
+    stack: row.stack ?? null,
+    cadence: (row.cadence ?? "weekly") as RoutineCadence,
+    targetCount: row.target_count ?? 1,
+    temperatureWeight: row.temperature_weight ?? 1,
+    humidityWeight: row.humidity_weight ?? 1,
+    isActive: row.is_active ?? true,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function toRoutineCheckin(row: DbRecord): RoutineCheckin {
+  return {
+    id: row.id,
+    routineId: row.routine_id,
+    userId: row.user_id,
+    checkedOn: row.checked_on,
+    completed: row.completed ?? true,
+    note: row.note ?? null,
+    createdAt: row.created_at
   };
 }
 
@@ -365,6 +403,115 @@ export async function upsertLifeGaugeCriteria(
   }
 
   return toLifeGaugeCriteria(data);
+}
+
+export async function getLifeRoutines(userId: string) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("life_routines")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(toLifeRoutine);
+}
+
+export async function createLifeRoutine(
+  userId: string,
+  input: {
+    title: string;
+    stack?: LifeStackKey | null;
+    cadence: RoutineCadence;
+    targetCount: number;
+    temperatureWeight: number;
+    humidityWeight: number;
+  }
+) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("life_routines")
+    .insert({
+      user_id: userId,
+      title: input.title,
+      stack: input.stack ?? null,
+      cadence: input.cadence,
+      target_count: input.targetCount,
+      temperature_weight: input.temperatureWeight,
+      humidity_weight: input.humidityWeight
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return toLifeRoutine(data);
+}
+
+export async function deactivateLifeRoutine(userId: string, routineId: string) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("life_routines")
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("id", routineId)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return toLifeRoutine(data);
+}
+
+export async function getRoutineCheckins(userId: string) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("life_routine_checkins")
+    .select("*")
+    .eq("user_id", userId)
+    .gte("checked_on", routineWindowStartDate())
+    .order("checked_on", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(toRoutineCheckin);
+}
+
+export async function upsertRoutineCheckin(
+  userId: string,
+  input: { routineId: string; completed?: boolean; note?: string | null }
+) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("life_routine_checkins")
+    .upsert(
+      {
+        user_id: userId,
+        routine_id: input.routineId,
+        checked_on: today(),
+        completed: input.completed ?? true,
+        note: input.note ?? null
+      },
+      { onConflict: "routine_id,checked_on" }
+    )
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return toRoutineCheckin(data);
 }
 
 export async function getTodayWorkoutLogs(userId: string) {
