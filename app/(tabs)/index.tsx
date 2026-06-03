@@ -1,11 +1,4 @@
-import {
-  AppCard,
-  EmptyState,
-  MetricCard,
-  PrimaryButton,
-  SecondaryButton,
-  ScreenSection
-} from "@/components/ui";
+import { AppCard, EmptyState, MetricCard, SecondaryButton, ScreenSection } from "@/components/ui";
 import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
 import { analyzeLifeDirection } from "@/lib/analysis";
@@ -27,23 +20,20 @@ import {
   Footprints,
   LogOut,
   Moon,
-  NotebookPen,
-  Plus,
   SlidersHorizontal,
   Thermometer,
   Utensils
 } from "lucide-react-native";
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 const stacks: {
   key: LifeStackKey;
-  cta: string;
   icon: typeof Footprints;
 }[] = [
-  { key: "move", cta: "Move", icon: Footprints },
-  { key: "meal", cta: "Meal", icon: Utensils },
-  { key: "recovery", cta: "Recovery", icon: Moon },
-  { key: "mind", cta: "Mind", icon: Brain }
+  { key: "move", icon: Footprints },
+  { key: "meal", icon: Utensils },
+  { key: "recovery", icon: Moon },
+  { key: "mind", icon: Brain }
 ];
 
 export default function TodayScreen() {
@@ -99,8 +89,6 @@ export default function TodayScreen() {
         </Text>
       </View>
 
-      <PrimaryButton icon={Plus} label="Today’s Better" onPress={() => router.push("/today")} />
-
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
         <View style={{ flex: 1 }}>
           <MetricCard
@@ -120,6 +108,23 @@ export default function TodayScreen() {
             tone="sky"
           />
         </View>
+      </View>
+      <View style={{ alignItems: "flex-end" }}>
+        <Pressable
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={() => router.push("/criteria")}
+          style={({ pressed }) => ({
+            alignItems: "center",
+            flexDirection: "row",
+            gap: spacing.xs,
+            opacity: pressed ? 0.62 : 1,
+            paddingVertical: spacing.xs
+          })}
+        >
+          <SlidersHorizontal color={colors.ink} size={14} strokeWidth={2.4} />
+          <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "900" }}>기준 조정</Text>
+        </Pressable>
       </View>
 
       <ScreenSection title="Stack">
@@ -144,11 +149,6 @@ export default function TodayScreen() {
                     </Text>
                   </View>
                 </View>
-                <PrimaryButton
-                  icon={stack.icon}
-                  label={stack.cta}
-                  onPress={() => router.push({ pathname: "/today", params: { stack: stack.key } })}
-                />
               </AppCard>
             );
           })}
@@ -188,37 +188,25 @@ export default function TodayScreen() {
               </Text>
             </View>
           </View>
-          <PrimaryButton
-            icon={ChartNoAxesColumn}
-            label="Report 보기"
-            onPress={() => router.push("/insights")}
-          />
-          <SecondaryButton
-            icon={SlidersHorizontal}
-            label="기준"
-            onPress={() => router.push("/criteria")}
-          />
-        </AppCard>
-      </ScreenSection>
-
-      <ScreenSection title="하루 정리">
-        <AppCard tone="amber">
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <NotebookPen color={colors.ink} size={22} strokeWidth={2.4} />
-            <View style={{ flex: 1, gap: spacing.xs }}>
-              <Text selectable style={{ color: colors.ink, fontSize: 18, fontWeight: "900" }}>
-                조금 더 길게 남기고 싶은 날
+          <View style={{ alignItems: "flex-start" }}>
+            <Pressable
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={() => router.push("/insights")}
+              style={({ pressed }) => ({
+                alignItems: "center",
+                flexDirection: "row",
+                gap: spacing.xs,
+                opacity: pressed ? 0.62 : 1,
+                paddingVertical: spacing.xs
+              })}
+            >
+              <ChartNoAxesColumn color={colors.ink} size={14} strokeWidth={2.4} />
+              <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "900" }}>
+                Report 보기
               </Text>
-              <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
-                Stack보다 긴 마음과 생각은 일기에 따로 보관합니다.
-              </Text>
-            </View>
+            </Pressable>
           </View>
-          <PrimaryButton
-            icon={NotebookPen}
-            label="일기 쓰기"
-            onPress={() => router.push("/diary")}
-          />
         </AppCard>
       </ScreenSection>
 
