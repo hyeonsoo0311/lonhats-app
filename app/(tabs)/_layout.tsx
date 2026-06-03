@@ -8,6 +8,7 @@ import {
   MessageCircle,
   Moon,
   NotebookPen,
+  Plus,
   SlidersHorizontal,
   Utensils
 } from "lucide-react-native";
@@ -55,6 +56,10 @@ export default function TabLayout() {
         options={{ title: "홈", tabBarLabel: "홈", tabBarIcon: createTabIcon(House) }}
       />
       <Tabs.Screen
+        name="today"
+        options={{ title: "Today", tabBarLabel: "Today", tabBarIcon: createTabIcon(Plus) }}
+      />
+      <Tabs.Screen
         name="train"
         options={{
           href: null,
@@ -97,6 +102,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="criteria"
         options={{
+          href: null,
           title: "나의 기준",
           tabBarLabel: "기준",
           tabBarIcon: createTabIcon(SlidersHorizontal)

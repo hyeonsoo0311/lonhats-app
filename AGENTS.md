@@ -155,7 +155,8 @@ git --git-dir=.git-codex --work-tree=. push
 - `journal_entries` stores the separate diary screen.
 - `life_gauge_criteria` stores each user's personal life temperature and humidity criteria.
 - The `Better tomorrow` community is one channel for now.
-- Bottom tabs should stay focused on `홈`, `일기`, `기준`, and `커뮤니티`. Stack recording screens are reached from Home.
+- Bottom tabs should stay focused on `홈`, `Today`, `커뮤니티`, and `일기`. Stack recording screens are reached from Today/Home.
+- The active brand direction is minimal, typographic, black-and-white, and editorial. Avoid pastel stack cards and playful category colors.
 
 ## Decision Rule
 

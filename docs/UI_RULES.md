@@ -24,11 +24,30 @@ Do not make a marketing-style landing page inside the app.
 Bottom tabs should remain simple:
 
 - `홈`
-- `일기`
-- `기준`
+- `Today`
 - `커뮤니티`
+- `일기`
 
-Do not expose `Move`, `Meal`, `Recovery`, or `Mind` as bottom tabs. Those stack recording screens are reached from Home.
+Do not expose `Move`, `Meal`, `Recovery`, `Mind`, or `기준` as bottom tabs. Stack creation happens in Today. The personal 기준 setting is reached from Home.
+
+## Visual Direction
+
+The active Lonhats visual direction is minimal, typographic, black-and-white, and editorial.
+
+Use:
+
+- White or off-white backgrounds.
+- Black and charcoal typography.
+- Restrained neutral borders.
+- Spacing, text hierarchy, and linework instead of color blocks.
+- Simple cards with minimal radius.
+
+Avoid:
+
+- Pastel stack cards.
+- Cute or playful category colors.
+- Generic habit-app softness.
+- Color-coded productivity pressure.
 
 ## Recording UI
 
@@ -45,10 +64,11 @@ Rules:
 
 Primary action wording:
 
-- `Move 기록 저장`
-- `Meal 기록 저장`
-- `Recovery 기록 저장`
-- `Mind 기록 저장`
+- `Today’s Better 완료`
+- `Move`
+- `Meal`
+- `Recovery`
+- `Mind`
 - `작은 인증 공유`
 
 ## Community UI

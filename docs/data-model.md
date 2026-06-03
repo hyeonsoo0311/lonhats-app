@@ -51,6 +51,10 @@ Every user-owned table includes `user_id uuid references auth.users(id)` and Row
 
 - `target_temperature`: the user's desired life temperature.
 - `target_humidity`: the user's desired life humidity.
+- `temperature_min_c`: default `36.0`, user-configurable.
+- `temperature_max_c`: default `37.3`, user-configurable.
+- `humidity_min_percent`: default `40`, user-configurable.
+- `humidity_max_percent`: default `50`, user-configurable.
 - `temperature_definition`: what life temperature means to the user.
 - `temperature_low_note`: how low temperature shows up.
 - `temperature_high_note`: how overly high temperature shows up.

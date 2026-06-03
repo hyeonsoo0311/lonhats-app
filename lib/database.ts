@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { defaultGaugeCriteria } from "@/lib/gauge";
 import type {
   AppNotice,
   CommunityComment,
@@ -181,6 +182,10 @@ function toLifeGaugeCriteria(row: DbRecord): LifeGaugeCriteria {
     userId: row.user_id,
     targetTemperature: row.target_temperature ?? 70,
     targetHumidity: row.target_humidity ?? 70,
+    temperatureMinC: Number(row.temperature_min_c ?? defaultGaugeCriteria.temperatureMinC),
+    temperatureMaxC: Number(row.temperature_max_c ?? defaultGaugeCriteria.temperatureMaxC),
+    humidityMinPercent: row.humidity_min_percent ?? defaultGaugeCriteria.humidityMinPercent,
+    humidityMaxPercent: row.humidity_max_percent ?? defaultGaugeCriteria.humidityMaxPercent,
     temperatureDefinition: row.temperature_definition ?? null,
     temperatureLowNote: row.temperature_low_note ?? null,
     temperatureHighNote: row.temperature_high_note ?? null,
@@ -318,6 +323,10 @@ export async function upsertLifeGaugeCriteria(
   input: {
     targetTemperature: number;
     targetHumidity: number;
+    temperatureMinC?: number;
+    temperatureMaxC?: number;
+    humidityMinPercent?: number;
+    humidityMaxPercent?: number;
     temperatureDefinition: string;
     temperatureLowNote: string;
     temperatureHighNote: string;
@@ -334,6 +343,10 @@ export async function upsertLifeGaugeCriteria(
         user_id: userId,
         target_temperature: input.targetTemperature,
         target_humidity: input.targetHumidity,
+        temperature_min_c: input.temperatureMinC ?? defaultGaugeCriteria.temperatureMinC,
+        temperature_max_c: input.temperatureMaxC ?? defaultGaugeCriteria.temperatureMaxC,
+        humidity_min_percent: input.humidityMinPercent ?? defaultGaugeCriteria.humidityMinPercent,
+        humidity_max_percent: input.humidityMaxPercent ?? defaultGaugeCriteria.humidityMaxPercent,
         temperature_definition: input.temperatureDefinition,
         temperature_low_note: input.temperatureLowNote,
         temperature_high_note: input.temperatureHighNote,

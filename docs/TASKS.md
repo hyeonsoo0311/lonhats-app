@@ -21,6 +21,8 @@ Make Lonhats usable as a record-based community app centered on `Today's Better`
 - Small proof feed and detail UI.
 - Separate diary screen.
 - Personal life temperature and humidity criteria.
+- Minimal black-and-white brand direction.
+- Unified Today stack creation flow.
 
 ## Near-Term Tasks
 
@@ -31,7 +33,7 @@ Goal: confirm that a real user can complete the core loop.
 Flow:
 
 1. Sign up or log in.
-2. Create one Move, Meal, Recovery, or Mind record.
+2. Create one Move, Meal, Recovery, or Mind stack from Today.
 3. View the record on the home screen.
 4. Open community.
 5. Select today's record.
@@ -108,6 +110,7 @@ Check:
 - Community feed.
 - Post detail screen.
 - Sign-in screen.
+- Today unified stack screen.
 
 ## Later Tasks
 

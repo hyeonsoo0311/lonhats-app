@@ -26,7 +26,6 @@ import {
   MessageCircle,
   Moon,
   Plus,
-  ThumbsDown,
   ThumbsUp,
   Utensils
 } from "lucide-react-native";
@@ -269,16 +268,15 @@ export default function CommunityScreen() {
                       </Pressable>
                       <Text
                         selectable
-                        style={{ color: colors.ink, fontSize: 16, fontWeight: "900" }}
+                        style={{
+                          color: colors.ink,
+                          fontSize: 13,
+                          fontWeight: "900",
+                          textAlign: "center"
+                        }}
                       >
-                        {post.upvoteCount}
+                        응원 {post.upvoteCount}
                       </Text>
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => voteMutation.mutate({ postId: post.id, value: -1 })}
-                      >
-                        <ThumbsDown color={colors.mutedInk} size={18} strokeWidth={2.4} />
-                      </Pressable>
                     </View>
                     <View style={{ flex: 1, gap: spacing.xs }}>
                       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>

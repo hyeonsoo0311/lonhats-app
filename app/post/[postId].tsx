@@ -19,7 +19,7 @@ import {
 import { stackLabels } from "@/lib/life";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { MessageCircle, Send, ThumbsDown, ThumbsUp } from "lucide-react-native";
+import { MessageCircle, Send, ThumbsUp } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
@@ -92,11 +92,8 @@ export default function PostDetailScreen() {
                   <ThumbsUp color={colors.moss} size={18} strokeWidth={2.4} />
                 </Pressable>
                 <Text selectable style={{ color: colors.ink, fontSize: 16, fontWeight: "900" }}>
-                  {post.upvoteCount}
+                  응원 {post.upvoteCount}
                 </Text>
-                <Pressable onPress={() => voteMutation.mutate(-1)}>
-                  <ThumbsDown color={colors.mutedInk} size={18} strokeWidth={2.4} />
-                </Pressable>
               </View>
               <View style={{ flex: 1, gap: spacing.sm }}>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.xs }}>

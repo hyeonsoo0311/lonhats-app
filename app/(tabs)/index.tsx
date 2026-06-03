@@ -9,6 +9,7 @@ import {
 import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
 import { analyzeLifeDirection } from "@/lib/analysis";
+import { defaultGaugeCriteria, gaugeRangeLabel, scoreToLifeTemperature } from "@/lib/gauge";
 import {
   getAppNotices,
   getLifeGaugeCriteria,
@@ -27,6 +28,7 @@ import {
   LogOut,
   Moon,
   NotebookPen,
+  Plus,
   SlidersHorizontal,
   Thermometer,
   Utensils
@@ -35,30 +37,14 @@ import { ScrollView, Text, View } from "react-native";
 
 const stacks: {
   key: LifeStackKey;
-  route: "/train" | "/fuel" | "/recovery" | "/reflect";
   cta: string;
   icon: typeof Footprints;
-  tone: "mint" | "blush" | "sky" | "amber";
 }[] = [
-  { key: "move", route: "/train", cta: "Move 기록", icon: Footprints, tone: "mint" },
-  { key: "meal", route: "/fuel", cta: "Meal 기록", icon: Utensils, tone: "blush" },
-  { key: "recovery", route: "/recovery", cta: "Recovery 기록", icon: Moon, tone: "sky" },
-  { key: "mind", route: "/reflect", cta: "Mind 기록", icon: Brain, tone: "amber" }
+  { key: "move", cta: "Move", icon: Footprints },
+  { key: "meal", cta: "Meal", icon: Utensils },
+  { key: "recovery", cta: "Recovery", icon: Moon },
+  { key: "mind", cta: "Mind", icon: Brain }
 ];
-
-function gaugeHelper(current: number, target?: number) {
-  if (typeof target !== "number") {
-    return "나의 기준을 설정할 수 있습니다";
-  }
-
-  const gap = current - target;
-
-  if (Math.abs(gap) <= 8) {
-    return `내 기준 ${target}에 가깝습니다`;
-  }
-
-  return gap > 0 ? `내 기준 ${target}보다 높습니다` : `내 기준 ${target}보다 낮습니다`;
-}
 
 export default function TodayScreen() {
   const { profile, signOut, user } = useAuth();
@@ -89,6 +75,11 @@ export default function TodayScreen() {
   const weeklyEntries = weeklyQuery.data ?? [];
   const report = analyzeLifeDirection(weeklyEntries);
   const criteria = criteriaQuery.data;
+  const lifeTemperature = scoreToLifeTemperature(report.temperature);
+  const temperatureMin = criteria?.temperatureMinC ?? defaultGaugeCriteria.temperatureMinC;
+  const temperatureMax = criteria?.temperatureMaxC ?? defaultGaugeCriteria.temperatureMaxC;
+  const humidityMin = criteria?.humidityMinPercent ?? defaultGaugeCriteria.humidityMinPercent;
+  const humidityMax = criteria?.humidityMaxPercent ?? defaultGaugeCriteria.humidityMaxPercent;
 
   return (
     <ScrollView
@@ -97,24 +88,26 @@ export default function TodayScreen() {
       contentContainerStyle={{ gap: spacing.lg, padding: spacing.md, paddingBottom: 110 }}
     >
       <View style={{ gap: spacing.sm, paddingTop: spacing.sm }}>
-        <Text selectable style={{ color: colors.moss, fontSize: 14, fontWeight: "900" }}>
-          lonhats
+        <Text selectable style={{ color: colors.mutedInk, fontSize: 12, fontWeight: "900" }}>
+          LONHATS
         </Text>
-        <Text selectable style={{ color: colors.ink, fontSize: 30, fontWeight: "900" }}>
+        <Text selectable style={{ color: colors.ink, fontSize: 34, fontWeight: "900" }}>
           {displayName}의 오늘
         </Text>
         <Text selectable style={{ color: colors.mutedInk, fontSize: 15, lineHeight: 22 }}>
-          론하츠는 삶을 평가하지 않고 살핍니다. 기록을 통해 내가 정한 온도와 습도를 확인합니다.
+          작은 것을 쌓고, 필요할 때만 나눕니다. 비교가 아니라 방향을 봅니다.
         </Text>
       </View>
+
+      <PrimaryButton icon={Plus} label="Today’s Better" onPress={() => router.push("/today")} />
 
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
         <View style={{ flex: 1 }}>
           <MetricCard
             icon={Thermometer}
             label="삶의 온도"
-            value={`${report.temperature}°`}
-            helper={gaugeHelper(report.temperature, criteria?.targetTemperature)}
+            value={`${lifeTemperature.toFixed(1)}°C`}
+            helper={gaugeRangeLabel(lifeTemperature, temperatureMin, temperatureMax, "°C")}
             tone="mint"
           />
         </View>
@@ -123,20 +116,20 @@ export default function TodayScreen() {
             icon={Droplets}
             label="삶의 습도"
             value={`${report.humidity}%`}
-            helper={gaugeHelper(report.humidity, criteria?.targetHumidity)}
+            helper={gaugeRangeLabel(report.humidity, humidityMin, humidityMax, "%")}
             tone="sky"
           />
         </View>
       </View>
 
-      <ScreenSection title="Stack 기록">
+      <ScreenSection title="Stack">
         <View style={{ gap: spacing.sm }}>
           {stacks.map((stack) => {
             const Icon = stack.icon;
             const todayCount = todayEntries.filter((entry) => entry.stack === stack.key).length;
 
             return (
-              <AppCard key={stack.key} tone={stack.tone}>
+              <AppCard key={stack.key} tone="plain">
                 <View style={{ flexDirection: "row", gap: spacing.sm }}>
                   <Icon color={colors.ink} size={22} strokeWidth={2.4} />
                   <View style={{ flex: 1, gap: spacing.xs }}>
@@ -154,7 +147,7 @@ export default function TodayScreen() {
                 <PrimaryButton
                   icon={stack.icon}
                   label={stack.cta}
-                  onPress={() => router.push(stack.route)}
+                  onPress={() => router.push({ pathname: "/today", params: { stack: stack.key } })}
                 />
               </AppCard>
             );
@@ -162,7 +155,7 @@ export default function TodayScreen() {
         </View>
       </ScreenSection>
 
-      <ScreenSection title="오늘 남긴 기록">
+      <ScreenSection title="오늘 쌓은 것">
         {todayEntries.length ? (
           todayEntries.slice(0, 6).map((entry) => (
             <AppCard key={entry.id} tone="plain">
@@ -176,7 +169,7 @@ export default function TodayScreen() {
           ))
         ) : (
           <EmptyState
-            title="아직 오늘의 기록이 없습니다."
+            title="아직 오늘 쌓은 것이 없습니다."
             body="한 줄이라도 남기면 오늘의 온도와 습도가 생깁니다."
           />
         )}
@@ -202,7 +195,7 @@ export default function TodayScreen() {
           />
           <SecondaryButton
             icon={SlidersHorizontal}
-            label="나의 기준 보기"
+            label="기준"
             onPress={() => router.push("/criteria")}
           />
         </AppCard>
@@ -217,7 +210,7 @@ export default function TodayScreen() {
                 조금 더 길게 남기고 싶은 날
               </Text>
               <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
-                Stack 기록보다 긴 마음과 생각은 일기에 따로 보관합니다.
+                Stack보다 긴 마음과 생각은 일기에 따로 보관합니다.
               </Text>
             </View>
           </View>

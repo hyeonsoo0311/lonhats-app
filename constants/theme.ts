@@ -1,23 +1,23 @@
 export const colors = {
-  ink: "#1E2528",
-  mutedInk: "#63706B",
-  paper: "#FFFDF8",
-  canvas: "#F5F1E8",
-  line: "#DDD5C7",
-  moss: "#416B52",
-  mint: "#CFE7D2",
-  tomato: "#D95D39",
-  blush: "#F4D2C6",
-  amber: "#DCA642",
-  sky: "#A7C7D9",
-  danger: "#B84032",
+  ink: "#101010",
+  mutedInk: "#6B6B6B",
+  paper: "#F7F5F0",
+  canvas: "#FBFAF7",
+  line: "#D8D5CE",
+  moss: "#101010",
+  mint: "#FFFFFF",
+  tomato: "#101010",
+  blush: "#FFFFFF",
+  amber: "#F7F5F0",
+  sky: "#FFFFFF",
+  danger: "#A3392F",
   white: "#FFFFFF"
 } as const;
 
 export const radii = {
   sm: 8,
-  md: 14,
-  lg: 22
+  md: 8,
+  lg: 10
 } as const;
 
 export const spacing = {

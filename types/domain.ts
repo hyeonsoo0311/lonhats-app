@@ -191,6 +191,10 @@ export type LifeGaugeCriteria = {
   userId: string;
   targetTemperature: number;
   targetHumidity: number;
+  temperatureMinC: number;
+  temperatureMaxC: number;
+  humidityMinPercent: number;
+  humidityMaxPercent: number;
   temperatureDefinition: string | null;
   temperatureLowNote: string | null;
   temperatureHighNote: string | null;

@@ -24,6 +24,27 @@ Every stack record should support:
 
 The meaning field is required for the product experience. A record without emotional context becomes plain tracking, which is not the direction of Lonhats.
 
+## Today
+
+`Today` is the unified stack creation page.
+
+The user can complete any combination of:
+
+- Move Stack.
+- Meal Stack.
+- Recovery Stack.
+- Mind Stack.
+- Short daily note.
+
+Rules:
+
+- The user should not be forced to complete all stacks.
+- One completed stack is a valid Today's Better.
+- Detailed fields stay optional.
+- Saving personal stacks should happen before community sharing.
+- After saving, the user can optionally share a small proof.
+- Private details, especially Meal details, should not be automatically shared.
+
 ## Move Stack
 
 Required:
@@ -126,8 +147,10 @@ Users can define their own standards for life temperature and life humidity.
 
 The criteria page should support:
 
-- Target life temperature.
-- Target life humidity.
+- Default optimal life temperature range: `36.0°C` to `37.3°C`.
+- Default optimal life humidity range: `40%` to `50%`.
+- User-configurable temperature range.
+- User-configurable humidity range.
 - What temperature means to the user.
 - What low temperature means.
 - What overly high temperature means.

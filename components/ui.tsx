@@ -20,7 +20,7 @@ export function ScreenSection({
           {title}
         </Text>
         {action ? (
-          <Text selectable style={{ color: colors.moss, fontSize: 13, fontWeight: "700" }}>
+          <Text selectable style={{ color: colors.mutedInk, fontSize: 12, fontWeight: "800" }}>
             {action}
           </Text>
         ) : null}
@@ -37,22 +37,13 @@ export function AppCard({
   children: ReactNode;
   tone?: "plain" | "mint" | "blush" | "sky" | "amber";
 }) {
-  const backgroundColor =
-    tone === "mint"
-      ? colors.mint
-      : tone === "blush"
-        ? colors.blush
-        : tone === "sky"
-          ? colors.sky
-          : tone === "amber"
-            ? "#F2DCAC"
-            : colors.white;
+  const backgroundColor = tone === "amber" ? colors.paper : colors.white;
 
   return (
     <View
       style={{
         backgroundColor,
-        borderColor: tone === "plain" ? colors.line : "rgba(30, 37, 40, 0.12)",
+        borderColor: colors.line,
         borderRadius: radii.md,
         borderWidth: 1,
         gap: spacing.sm,
@@ -83,7 +74,9 @@ export function MetricCard({
         <View
           style={{
             alignItems: "center",
-            backgroundColor: "rgba(255,255,255,0.65)",
+            backgroundColor: colors.paper,
+            borderColor: colors.line,
+            borderWidth: 1,
             borderRadius: 999,
             height: 34,
             justifyContent: "center",
@@ -124,13 +117,13 @@ export function PrimaryButton({
       onPress={onPress}
       style={({ pressed }) => ({
         alignItems: "center",
-        backgroundColor: disabled ? colors.mutedInk : pressed ? "#2F513D" : colors.moss,
+        backgroundColor: disabled ? colors.mutedInk : colors.ink,
         borderRadius: radii.sm,
         flexDirection: "row",
         gap: spacing.sm,
         justifyContent: "center",
         minHeight: 48,
-        opacity: pressed ? 0.88 : 1,
+        opacity: pressed ? 0.82 : 1,
         paddingHorizontal: spacing.md
       })}
     >
@@ -158,7 +151,7 @@ export function SecondaryButton({
       onPress={onPress}
       style={({ pressed }) => ({
         alignItems: "center",
-        backgroundColor: pressed ? colors.line : colors.paper,
+        backgroundColor: pressed ? colors.paper : colors.white,
         borderColor: colors.line,
         borderRadius: radii.sm,
         borderWidth: 1,

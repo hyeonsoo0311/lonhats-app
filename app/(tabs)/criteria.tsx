@@ -9,6 +9,7 @@ import {
 import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
 import { analyzeLifeDirection } from "@/lib/analysis";
+import { defaultGaugeCriteria, gaugeRangeLabel, scoreToLifeTemperature } from "@/lib/gauge";
 import {
   getLifeGaugeCriteria,
   getWeeklyLifeEntries,
@@ -20,8 +21,6 @@ import { useMemo, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
 const defaults = {
-  targetTemperature: "70",
-  targetHumidity: "70",
   temperatureDefinition: "나에게 삶의 온도는 몸을 움직이고 생각이 앞으로 가는 느낌이다.",
   temperatureLowNote: "온도가 낮다는 것은 움직임과 몰입이 줄어드는 신호다.",
   temperatureHighNote: "온도가 너무 높다는 것은 무리하거나 과열되는 신호일 수 있다.",
@@ -30,36 +29,28 @@ const defaults = {
   humidityHighNote: "습도가 너무 높다는 것은 편안하지만 정체되어 있는지 살펴볼 신호다."
 };
 
-function toGaugeValue(value: string) {
+function toTemperature(value: string, fallback: number) {
   const parsed = Number(value);
-
-  if (!Number.isFinite(parsed)) {
-    return 70;
-  }
-
-  return Math.min(Math.max(Math.round(parsed), 0), 100);
+  return Number.isFinite(parsed) ? Number(parsed.toFixed(1)) : fallback;
 }
 
-function gapLabel(current: number, target: number) {
-  const gap = current - target;
+function toPercent(value: string, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.min(Math.max(Math.round(parsed), 0), 100) : fallback;
+}
 
-  if (Math.abs(gap) <= 8) {
-    return "내 기준에 가깝습니다.";
-  }
-
-  if (gap > 0) {
-    return "내 기준보다 높습니다.";
-  }
-
-  return "내 기준보다 낮습니다.";
+function temperatureCToScore(value: number) {
+  return Math.min(Math.max(Math.round(((value - 35.5) / 2.5) * 100), 0), 100);
 }
 
 export default function CriteriaScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const userId = user?.id ?? "";
-  const [targetTemperature, setTargetTemperature] = useState<string | null>(null);
-  const [targetHumidity, setTargetHumidity] = useState<string | null>(null);
+  const [temperatureMinC, setTemperatureMinC] = useState<string | null>(null);
+  const [temperatureMaxC, setTemperatureMaxC] = useState<string | null>(null);
+  const [humidityMinPercent, setHumidityMinPercent] = useState<string | null>(null);
+  const [humidityMaxPercent, setHumidityMaxPercent] = useState<string | null>(null);
   const [temperatureDefinition, setTemperatureDefinition] = useState<string | null>(null);
   const [temperatureLowNote, setTemperatureLowNote] = useState<string | null>(null);
   const [temperatureHighNote, setTemperatureHighNote] = useState<string | null>(null);
@@ -81,10 +72,18 @@ export default function CriteriaScreen() {
 
   const report = useMemo(() => analyzeLifeDirection(weeklyQuery.data ?? []), [weeklyQuery.data]);
   const criteria = criteriaQuery.data;
-  const targetTemperatureValue =
-    targetTemperature ?? String(criteria?.targetTemperature ?? defaults.targetTemperature);
-  const targetHumidityValue =
-    targetHumidity ?? String(criteria?.targetHumidity ?? defaults.targetHumidity);
+  const temperatureMinValue =
+    temperatureMinC ??
+    String(criteria?.temperatureMinC ?? defaultGaugeCriteria.temperatureMinC.toFixed(1));
+  const temperatureMaxValue =
+    temperatureMaxC ??
+    String(criteria?.temperatureMaxC ?? defaultGaugeCriteria.temperatureMaxC.toFixed(1));
+  const humidityMinValue =
+    humidityMinPercent ??
+    String(criteria?.humidityMinPercent ?? defaultGaugeCriteria.humidityMinPercent);
+  const humidityMaxValue =
+    humidityMaxPercent ??
+    String(criteria?.humidityMaxPercent ?? defaultGaugeCriteria.humidityMaxPercent);
   const temperatureDefinitionValue =
     temperatureDefinition ?? criteria?.temperatureDefinition ?? defaults.temperatureDefinition;
   const temperatureLowNoteValue =
@@ -97,12 +96,21 @@ export default function CriteriaScreen() {
     humidityLowNote ?? criteria?.humidityLowNote ?? defaults.humidityLowNote;
   const humidityHighNoteValue =
     humidityHighNote ?? criteria?.humidityHighNote ?? defaults.humidityHighNote;
+  const temperatureMin = toTemperature(temperatureMinValue, defaultGaugeCriteria.temperatureMinC);
+  const temperatureMax = toTemperature(temperatureMaxValue, defaultGaugeCriteria.temperatureMaxC);
+  const humidityMin = toPercent(humidityMinValue, defaultGaugeCriteria.humidityMinPercent);
+  const humidityMax = toPercent(humidityMaxValue, defaultGaugeCriteria.humidityMaxPercent);
+  const lifeTemperature = scoreToLifeTemperature(report.temperature);
 
   const saveMutation = useMutation({
     mutationFn: () =>
       upsertLifeGaugeCriteria(userId, {
-        targetTemperature: toGaugeValue(targetTemperatureValue),
-        targetHumidity: toGaugeValue(targetHumidityValue),
+        targetTemperature: temperatureCToScore((temperatureMin + temperatureMax) / 2),
+        targetHumidity: Math.round((humidityMin + humidityMax) / 2),
+        temperatureMinC: temperatureMin,
+        temperatureMaxC: temperatureMax,
+        humidityMinPercent: humidityMin,
+        humidityMaxPercent: humidityMax,
         temperatureDefinition: temperatureDefinitionValue.trim(),
         temperatureLowNote: temperatureLowNoteValue.trim(),
         temperatureHighNote: temperatureHighNoteValue.trim(),
@@ -122,6 +130,11 @@ export default function CriteriaScreen() {
   });
 
   function handleSave() {
+    if (temperatureMin > temperatureMax || humidityMin > humidityMax) {
+      setError("기준 범위의 시작값이 끝값보다 클 수 없습니다.");
+      return;
+    }
+
     if (!temperatureDefinitionValue.trim() || !humidityDefinitionValue.trim()) {
       setError("온도와 습도의 의미를 입력해주세요.");
       return;
@@ -136,16 +149,16 @@ export default function CriteriaScreen() {
       style={{ backgroundColor: colors.canvas }}
       contentContainerStyle={{ gap: spacing.lg, padding: spacing.md, paddingBottom: 110 }}
     >
-      <ScreenSection title="나의 기준" action="온도와 습도">
-        <AppCard tone="sky">
+      <ScreenSection title="기준" action="Home setting">
+        <AppCard tone="plain">
           <View style={{ flexDirection: "row", gap: spacing.sm }}>
             <SlidersHorizontal color={colors.ink} size={22} strokeWidth={2.4} />
             <View style={{ flex: 1, gap: spacing.xs }}>
               <Text selectable style={{ color: colors.ink, fontSize: 18, fontWeight: "900" }}>
-                같은 숫자라도 사람마다 의미는 다릅니다.
+                나에게 적정한 온도와 습도
               </Text>
               <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
-                삶의 온도와 습도를 내 기준으로 평가할 수 있게 목표와 해석을 적어둡니다.
+                기본 기준은 온도 36.0°C-37.3°C, 습도 40%-50%입니다.
               </Text>
             </View>
           </View>
@@ -157,9 +170,9 @@ export default function CriteriaScreen() {
           <MetricCard
             icon={Thermometer}
             label="현재 온도"
-            value={`${report.temperature}°`}
-            helper={gapLabel(report.temperature, toGaugeValue(targetTemperatureValue))}
-            tone="mint"
+            value={`${lifeTemperature.toFixed(1)}°C`}
+            helper={gaugeRangeLabel(lifeTemperature, temperatureMin, temperatureMax, "°C")}
+            tone="plain"
           />
         </View>
         <View style={{ flex: 1 }}>
@@ -167,20 +180,32 @@ export default function CriteriaScreen() {
             icon={Droplets}
             label="현재 습도"
             value={`${report.humidity}%`}
-            helper={gapLabel(report.humidity, toGaugeValue(targetHumidityValue))}
-            tone="sky"
+            helper={gaugeRangeLabel(report.humidity, humidityMin, humidityMax, "%")}
+            tone="plain"
           />
         </View>
       </View>
 
-      <ScreenSection title="온도 기준">
+      <ScreenSection title="온도">
         <View style={{ gap: spacing.sm }}>
-          <Field
-            keyboardType="numeric"
-            value={targetTemperatureValue}
-            onChangeText={setTargetTemperature}
-            placeholder="목표 온도 0-100"
-          />
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <View style={{ flex: 1 }}>
+              <Field
+                keyboardType="numeric"
+                value={temperatureMinValue}
+                onChangeText={setTemperatureMinC}
+                placeholder="최소 °C"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Field
+                keyboardType="numeric"
+                value={temperatureMaxValue}
+                onChangeText={setTemperatureMaxC}
+                placeholder="최대 °C"
+              />
+            </View>
+          </View>
           <Field
             multiline
             value={temperatureDefinitionValue}
@@ -197,19 +222,31 @@ export default function CriteriaScreen() {
             multiline
             value={temperatureHighNoteValue}
             onChangeText={setTemperatureHighNote}
-            placeholder="온도가 너무 높을 때의 신호"
+            placeholder="온도가 높을 때의 신호"
           />
         </View>
       </ScreenSection>
 
-      <ScreenSection title="습도 기준">
+      <ScreenSection title="습도">
         <View style={{ gap: spacing.sm }}>
-          <Field
-            keyboardType="numeric"
-            value={targetHumidityValue}
-            onChangeText={setTargetHumidity}
-            placeholder="목표 습도 0-100"
-          />
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <View style={{ flex: 1 }}>
+              <Field
+                keyboardType="numeric"
+                value={humidityMinValue}
+                onChangeText={setHumidityMinPercent}
+                placeholder="최소 %"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Field
+                keyboardType="numeric"
+                value={humidityMaxValue}
+                onChangeText={setHumidityMaxPercent}
+                placeholder="최대 %"
+              />
+            </View>
+          </View>
           <Field
             multiline
             value={humidityDefinitionValue}
@@ -226,7 +263,7 @@ export default function CriteriaScreen() {
             multiline
             value={humidityHighNoteValue}
             onChangeText={setHumidityHighNote}
-            placeholder="습도가 너무 높을 때의 신호"
+            placeholder="습도가 높을 때의 신호"
           />
         </View>
       </ScreenSection>
@@ -239,7 +276,7 @@ export default function CriteriaScreen() {
       <PrimaryButton
         disabled={saveMutation.isPending}
         icon={Save}
-        label={saveMutation.isPending ? "저장 중" : "나의 기준 저장"}
+        label={saveMutation.isPending ? "저장 중" : "기준 저장"}
         onPress={handleSave}
       />
 
@@ -247,8 +284,9 @@ export default function CriteriaScreen() {
         {criteriaQuery.data ? (
           <AppCard tone="plain">
             <Text selectable style={{ color: colors.ink, fontSize: 17, fontWeight: "900" }}>
-              목표 온도 {criteriaQuery.data.targetTemperature}° · 목표 습도{" "}
-              {criteriaQuery.data.targetHumidity}%
+              온도 {criteriaQuery.data.temperatureMinC.toFixed(1)}°C-
+              {criteriaQuery.data.temperatureMaxC.toFixed(1)}°C · 습도{" "}
+              {criteriaQuery.data.humidityMinPercent}%-{criteriaQuery.data.humidityMaxPercent}%
             </Text>
             <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
               {criteriaQuery.data.temperatureDefinition}
@@ -260,7 +298,7 @@ export default function CriteriaScreen() {
         ) : (
           <EmptyState
             title="아직 저장된 기준이 없습니다."
-            body="내가 어떤 삶의 온도와 습도를 원하고 있는지 먼저 적어보세요."
+            body="기본 기준을 그대로 쓰거나 나에게 맞게 조금 조정하세요."
           />
         )}
       </ScreenSection>
