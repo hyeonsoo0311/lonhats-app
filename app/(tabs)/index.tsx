@@ -1,11 +1,4 @@
-import {
-  AppCard,
-  EmptyState,
-  MetricCard,
-  Pill,
-  SecondaryButton,
-  ScreenSection
-} from "@/components/ui";
+import { AppCard, EmptyState, SecondaryButton, ScreenSection } from "@/components/ui";
 import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
 import { analyzeLifeDirection } from "@/lib/analysis";
@@ -18,43 +11,31 @@ import {
   getRoutineCheckins,
   getTodayLifeEntries,
   getTodayMealLogs,
-  getTodayWorkoutLogs,
   getWeeklyLifeEntries
 } from "@/lib/database";
 import { stackLabels } from "@/lib/life";
-import type { LifeStackKey } from "@/types/domain";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import {
+  ArrowRight,
   Brain,
-  ChartNoAxesColumn,
-  Droplets,
+  Check,
   Footprints,
   LogOut,
   Moon,
+  Plus,
   SlidersHorizontal,
-  Thermometer,
-  UserRound,
-  Utensils
+  UserRound
 } from "lucide-react-native";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
-const recordCards: {
-  key: "meal" | "move" | "recovery" | "mind" | "body";
-  title: string;
-  route: "/fuel" | "/train" | "/recovery" | "/reflect" | "/body";
-  icon: typeof Utensils;
-}[] = [
-  { key: "meal", title: "Meal", route: "/fuel", icon: Utensils },
-  { key: "move", title: "Move", route: "/train", icon: Footprints },
-  { key: "recovery", title: "Recovery", route: "/recovery", icon: Moon },
-  { key: "mind", title: "Mind", route: "/reflect", icon: Brain },
-  { key: "body", title: "Body", route: "/body", icon: UserRound }
-];
-
 const mealOrder = ["아침", "점심", "저녁", "간식"];
 
-function formatMinutes(minutes: number | null) {
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatMinutes(minutes: number | null | undefined) {
   if (!minutes) {
     return "0분";
   }
@@ -71,6 +52,149 @@ function formatMinutes(minutes: number | null) {
 
 function numberText(value: number | null | undefined, suffix: string) {
   return value === null || value === undefined ? "-" : `${value}${suffix}`;
+}
+
+function detailText(details: Record<string, unknown>, key: string) {
+  const value = details[key];
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function ActionLink({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      hitSlop={8}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        alignItems: "center",
+        flexDirection: "row",
+        gap: spacing.xs,
+        opacity: pressed ? 0.6 : 1,
+        paddingVertical: spacing.xs
+      })}
+    >
+      <Plus color={colors.ink} size={14} strokeWidth={2.5} />
+      <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "900" }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function StatusDot({ active }: { active: boolean }) {
+  return (
+    <View
+      style={{
+        backgroundColor: active ? colors.ink : colors.white,
+        borderColor: active ? colors.ink : colors.line,
+        borderRadius: 999,
+        borderWidth: 1,
+        height: 11,
+        width: 11
+      }}
+    />
+  );
+}
+
+function StatCell({ label, value, helper }: { label: string; value: string; helper?: string }) {
+  return (
+    <View style={{ flex: 1, gap: 4 }}>
+      <Text selectable style={{ color: colors.mutedInk, fontSize: 11, fontWeight: "900" }}>
+        {label}
+      </Text>
+      <Text
+        selectable
+        style={{
+          color: colors.ink,
+          fontSize: 25,
+          fontWeight: "900",
+          fontVariant: ["tabular-nums"]
+        }}
+      >
+        {value}
+      </Text>
+      {helper ? (
+        <Text selectable style={{ color: colors.mutedInk, fontSize: 11, lineHeight: 15 }}>
+          {helper}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function ProgressBar({ value }: { value: number }) {
+  return (
+    <View
+      style={{
+        backgroundColor: colors.paper,
+        borderRadius: 999,
+        height: 6,
+        overflow: "hidden"
+      }}
+    >
+      <View
+        style={{
+          backgroundColor: colors.ink,
+          height: 6,
+          width: `${Math.max(3, Math.min(value, 100))}%`
+        }}
+      />
+    </View>
+  );
+}
+
+function RecordTile({
+  title,
+  value,
+  helper,
+  onPress,
+  icon: Icon,
+  complete
+}: {
+  title: string;
+  value: string;
+  helper: string;
+  onPress: () => void;
+  icon: typeof Footprints;
+  complete: boolean;
+}) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={{ flex: 1 }}>
+      <View
+        style={{
+          backgroundColor: colors.white,
+          borderColor: colors.line,
+          borderRadius: 8,
+          borderWidth: 1,
+          gap: spacing.sm,
+          minHeight: 148,
+          padding: spacing.md
+        }}
+      >
+        <View
+          style={{ alignItems: "center", flexDirection: "row", justifyContent: "space-between" }}
+        >
+          <Icon color={colors.ink} size={21} strokeWidth={2.4} />
+          <StatusDot active={complete} />
+        </View>
+        <View style={{ gap: 4 }}>
+          <Text selectable style={{ color: colors.mutedInk, fontSize: 12, fontWeight: "900" }}>
+            {title}
+          </Text>
+          <Text selectable style={{ color: colors.ink, fontSize: 18, fontWeight: "900" }}>
+            {value}
+          </Text>
+          <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 18 }}>
+            {helper}
+          </Text>
+        </View>
+        <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.xs }}>
+          <Text style={{ color: colors.ink, fontSize: 12, fontWeight: "900" }}>
+            {complete ? "수정" : "추가"}
+          </Text>
+          <ArrowRight color={colors.ink} size={13} strokeWidth={2.5} />
+        </View>
+      </View>
+    </Pressable>
+  );
 }
 
 export default function HomeScreen() {
@@ -91,11 +215,6 @@ export default function HomeScreen() {
   const mealsQuery = useQuery({
     queryKey: ["today-meals", userId],
     queryFn: () => getTodayMealLogs(userId),
-    enabled: Boolean(userId)
-  });
-  const workoutsQuery = useQuery({
-    queryKey: ["today-workouts", userId],
-    queryFn: () => getTodayWorkoutLogs(userId),
     enabled: Boolean(userId)
   });
   const latestBodyQuery = useQuery({
@@ -126,7 +245,6 @@ export default function HomeScreen() {
   const todayEntries = todayQuery.data ?? [];
   const weeklyEntries = weeklyQuery.data ?? [];
   const mealLogs = mealsQuery.data ?? [];
-  const workoutLogs = workoutsQuery.data ?? [];
   const latestBody = latestBodyQuery.data;
   const report = analyzeLifeDirection(weeklyEntries, {
     routines: routinesQuery.data ?? [],
@@ -140,53 +258,35 @@ export default function HomeScreen() {
   const humidityMax = criteria?.humidityMaxPercent ?? defaultGaugeCriteria.humidityMaxPercent;
   const calories = mealLogs.reduce((total, meal) => total + meal.calories, 0);
   const protein = Math.round(mealLogs.reduce((total, meal) => total + meal.proteinGram, 0));
-  const workoutMinutes = workoutLogs.reduce((total, workout) => total + (workout.minutes ?? 0), 0);
+  const carbs = Math.round(mealLogs.reduce((total, meal) => total + meal.carbsGram, 0));
+  const fat = Math.round(mealLogs.reduce((total, meal) => total + meal.fatGram, 0));
+  const today = todayKey();
   const sleepEntry = todayEntries.find(
     (entry) => entry.stack === "recovery" && entry.category === "수면"
   );
-  const mindEntries = todayEntries.filter((entry) => entry.stack === "mind");
-  const completedStacks = new Set(todayEntries.map((entry) => entry.stack));
-
-  function recordSummary(key: (typeof recordCards)[number]["key"]) {
-    if (key === "meal") {
-      return mealLogs.length
-        ? `${mealLogs.length}개 · ${calories}kcal · 단백질 ${protein}g`
-        : "아침, 점심, 저녁, 간식을 남길 수 있습니다.";
-    }
-
-    if (key === "move") {
-      return workoutLogs.length
-        ? `${workoutLogs.length}개 · ${workoutMinutes}분`
-        : "운동 종류, 시간, 강도, 의미를 남깁니다.";
-    }
-
-    if (key === "recovery") {
-      return sleepEntry
-        ? `수면 ${formatMinutes(sleepEntry.durationMinutes)}`
-        : "취침, 기상, 수면 시간, 컨디션을 남깁니다.";
-    }
-
-    if (key === "mind") {
-      return mindEntries.length
-        ? `${mindEntries.length}개 · ${mindEntries[0]?.title ?? "Mind"}`
-        : "독서, 공부, 회고, 프로젝트 시간을 남깁니다.";
-    }
-
-    return latestBody
-      ? `체중 ${numberText(latestBody.weightKg, "kg")} · 체지방 ${numberText(
-          latestBody.bodyFatPercent,
-          "%"
-        )}`
-      : "신장, 체중, 골격근량, 체지방률을 개인 기록으로 남깁니다.";
-  }
-
-  function recordComplete(key: (typeof recordCards)[number]["key"]) {
-    if (key === "body") {
-      return Boolean(latestBody && latestBody.measuredOn === new Date().toISOString().slice(0, 10));
-    }
-
-    return completedStacks.has(key as LifeStackKey);
-  }
+  const recoveryEntry = todayEntries.find((entry) => entry.stack === "recovery");
+  const moveEntry = todayEntries.find((entry) => entry.stack === "move");
+  const mindEntry = todayEntries.find((entry) => entry.stack === "mind");
+  const mealEntry = todayEntries.find((entry) => entry.stack === "meal");
+  const latestMeal = mealLogs[0];
+  const completedRoutineCount = report.routineSignals.filter(
+    (signal) => signal.progress >= 100
+  ).length;
+  const routineTotal = report.routineSignals.length;
+  const temperatureHelper = gaugeRangeLabel(lifeTemperature, temperatureMin, temperatureMax, "°C");
+  const humidityHelper = gaugeRangeLabel(report.humidity, humidityMin, humidityMax, "%");
+  const bedtime = sleepEntry ? detailText(sleepEntry.details, "bedtime") : null;
+  const wakeTime = sleepEntry ? detailText(sleepEntry.details, "wakeTime") : null;
+  const bodyLoggedToday = Boolean(latestBody && latestBody.measuredOn === today);
+  const bodySummary = latestBody
+    ? `체중 ${numberText(latestBody.weightKg, "kg")} · 골격근량 ${numberText(
+        latestBody.skeletalMuscleKg,
+        "kg"
+      )}`
+    : "아직 Body 기록이 없습니다.";
+  const todaySentence =
+    todayEntries.find((entry) => entry.meaning?.trim())?.meaning ??
+    "오늘 남긴 문장이 아직 없습니다.";
 
   return (
     <ScrollView
@@ -194,149 +294,258 @@ export default function HomeScreen() {
       style={{ backgroundColor: colors.canvas }}
       contentContainerStyle={{ gap: spacing.lg, padding: spacing.md, paddingBottom: 110 }}
     >
-      <View style={{ gap: spacing.sm, paddingTop: spacing.sm }}>
-        <Text selectable style={{ color: colors.mutedInk, fontSize: 12, fontWeight: "900" }}>
-          LONHATS DAILY
-        </Text>
-        <Text selectable style={{ color: colors.ink, fontSize: 34, fontWeight: "900" }}>
-          {displayName}의 오늘
-        </Text>
-        <Text selectable style={{ color: colors.mutedInk, fontSize: 15, lineHeight: 22 }}>
-          기록할 항목을 분명히 보고, 필요한 만큼만 남깁니다.
-        </Text>
-      </View>
+      <AppCard tone="plain">
+        <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.md }}>
+          <View style={{ flex: 1, gap: spacing.xs }}>
+            <Text selectable style={{ color: colors.mutedInk, fontSize: 11, fontWeight: "900" }}>
+              LONHATS
+            </Text>
+            <Text selectable style={{ color: colors.ink, fontSize: 30, fontWeight: "900" }}>
+              {displayName}의 오늘
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={() => router.push("/criteria")}
+            style={({ pressed }) => ({
+              alignItems: "center",
+              flexDirection: "row",
+              gap: spacing.xs,
+              opacity: pressed ? 0.62 : 1,
+              paddingTop: 2
+            })}
+          >
+            <SlidersHorizontal color={colors.ink} size={14} strokeWidth={2.4} />
+            <Text style={{ color: colors.ink, fontSize: 12, fontWeight: "900" }}>기준</Text>
+          </Pressable>
+        </View>
 
-      <View style={{ flexDirection: "row", gap: spacing.sm }}>
-        <View style={{ flex: 1 }}>
-          <MetricCard
-            icon={Thermometer}
-            label="삶의 온도"
-            value={`${lifeTemperature.toFixed(1)}°C`}
-            helper={gaugeRangeLabel(lifeTemperature, temperatureMin, temperatureMax, "°C")}
+        <View
+          style={{
+            borderColor: colors.line,
+            borderTopWidth: 1,
+            flexDirection: "row",
+            gap: spacing.md,
+            paddingTop: spacing.md
+          }}
+        >
+          <StatCell
+            label="온도"
+            value={`${lifeTemperature.toFixed(1)}°`}
+            helper={temperatureHelper.replace("기준 범위 ", "")}
+          />
+          <StatCell label="습도" value={`${report.humidity}%`} helper={humidityHelper} />
+          <StatCell
+            label="기준"
+            value={
+              routineTotal ? `${completedRoutineCount}/${routineTotal}` : `${report.routineScore}%`
+            }
+            helper="완료율"
           />
         </View>
-        <View style={{ flex: 1 }}>
-          <MetricCard
-            icon={Droplets}
-            label="삶의 습도"
-            value={`${report.humidity}%`}
-            helper={gaugeRangeLabel(report.humidity, humidityMin, humidityMax, "%")}
-          />
-        </View>
-      </View>
+      </AppCard>
 
-      <ScreenSection title="오늘의 기준">
-        <AppCard tone="plain">
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <ChartNoAxesColumn color={colors.ink} size={22} strokeWidth={2.4} />
-            <View style={{ flex: 1, gap: spacing.xs }}>
-              <Text selectable style={{ color: colors.ink, fontSize: 20, fontWeight: "900" }}>
-                기준 완료율 {report.routineScore}%
-              </Text>
-              <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
-                {report.message}
-              </Text>
-            </View>
-          </View>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-            {report.routineSignals.length ? (
-              report.routineSignals
-                .slice(0, 4)
-                .map((signal) => (
-                  <Pill
-                    key={signal.routineId}
-                    label={`${signal.title} ${signal.actualCount}/${signal.expectedCount}`}
-                    active={signal.progress >= 80}
-                  />
-                ))
-            ) : (
-              <Pill label="기준을 추가하면 완료율이 계산됩니다." />
-            )}
-          </View>
-          <View style={{ alignItems: "flex-start" }}>
-            <Pressable
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={() => router.push("/criteria")}
-              style={({ pressed }) => ({
-                alignItems: "center",
-                flexDirection: "row",
-                gap: spacing.xs,
-                opacity: pressed ? 0.62 : 1,
-                paddingVertical: spacing.xs
-              })}
-            >
-              <SlidersHorizontal color={colors.ink} size={14} strokeWidth={2.4} />
-              <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "900" }}>기준 조정</Text>
-            </Pressable>
-          </View>
-        </AppCard>
-      </ScreenSection>
-
-      <ScreenSection title="오늘 기록">
-        <View style={{ gap: spacing.sm }}>
-          {recordCards.map((card) => {
-            const Icon = card.icon;
-            const complete = recordComplete(card.key);
-
-            return (
-              <Pressable
-                key={card.key}
-                accessibilityRole="button"
-                onPress={() => router.push(card.route)}
-              >
-                <AppCard tone="plain">
-                  <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.sm }}>
-                    <Icon color={colors.ink} size={22} strokeWidth={2.4} />
-                    <View style={{ flex: 1, gap: spacing.xs }}>
-                      <Text
-                        selectable
-                        style={{ color: colors.ink, fontSize: 18, fontWeight: "900" }}
-                      >
-                        {card.title}
-                      </Text>
-                      <Text
-                        selectable
-                        style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}
-                      >
-                        {recordSummary(card.key)}
-                      </Text>
-                    </View>
-                    <Pill label={complete ? "완료" : "추가"} active={complete} />
-                  </View>
-                </AppCard>
-              </Pressable>
-            );
-          })}
-        </View>
-      </ScreenSection>
-
-      <ScreenSection title="끼니 요약">
+      <ScreenSection title="오늘의 식사">
         <AppCard tone="plain">
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
             {mealOrder.map((type) => {
               const typedLogs = mealLogs.filter((meal) => meal.mealType === type);
 
               return (
-                <Pill
+                <Pressable
                   key={type}
-                  label={`${type} ${typedLogs.length ? `${typedLogs.length}개` : "비어 있음"}`}
-                  active={typedLogs.length > 0}
-                />
+                  accessibilityRole="button"
+                  onPress={() => router.push("/fuel")}
+                  style={{
+                    alignItems: "center",
+                    borderColor: colors.line,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    flexDirection: "row",
+                    gap: spacing.xs,
+                    minWidth: "46%",
+                    padding: spacing.sm
+                  }}
+                >
+                  <StatusDot active={typedLogs.length > 0} />
+                  <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "900" }}>{type}</Text>
+                  <Text style={{ color: colors.mutedInk, fontSize: 12 }}>
+                    {typedLogs.length ? `${typedLogs.length}` : ""}
+                  </Text>
+                </Pressable>
               );
             })}
           </View>
+
+          <View style={{ gap: 5 }}>
+            <Text selectable style={{ color: colors.ink, fontSize: 19, fontWeight: "900" }}>
+              {latestMeal
+                ? `${latestMeal.mealType} · ${latestMeal.foodName}`
+                : (mealEntry?.title ?? "아직 식사가 비어 있습니다.")}
+            </Text>
+            <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
+              {latestMeal
+                ? `${latestMeal.amountGram ? `${latestMeal.amountGram}g 기준 · ` : ""}${
+                    latestMeal.calories
+                  }kcal · 탄 ${latestMeal.carbsGram}g · 단 ${latestMeal.proteinGram}g · 지 ${
+                    latestMeal.fatGram
+                  }g`
+                : "끼니를 선택하고 음식명과 g 단위를 남기면 영양 기준이 선명해집니다."}
+            </Text>
+          </View>
+
+          <ProgressBar value={calories ? Math.min(100, Math.round((protein / 80) * 100)) : 0} />
+          <Text selectable style={{ color: colors.mutedInk, fontSize: 12, lineHeight: 17 }}>
+            오늘 합계 {calories}kcal · 탄 {carbs}g · 단 {protein}g · 지 {fat}g
+          </Text>
+          <ActionLink label="Meal" onPress={() => router.push("/fuel")} />
+        </AppCard>
+      </ScreenSection>
+
+      <ScreenSection title="수면과 회복">
+        <AppCard tone="plain">
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <Moon color={colors.ink} size={22} strokeWidth={2.4} />
+            <View style={{ flex: 1, gap: spacing.xs }}>
+              <Text selectable style={{ color: colors.ink, fontSize: 20, fontWeight: "900" }}>
+                {sleepEntry ? `수면 ${formatMinutes(sleepEntry.durationMinutes)}` : "수면 미기록"}
+              </Text>
+              <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
+                {sleepEntry
+                  ? `취침 ${bedtime ?? "-"} · 기상 ${wakeTime ?? "-"}`
+                  : (recoveryEntry?.title ??
+                    "취침, 기상, 총 수면 시간을 남기면 습도가 선명해집니다.")}
+              </Text>
+            </View>
+            <StatusDot active={Boolean(recoveryEntry)} />
+          </View>
+          <ActionLink label="Recovery" onPress={() => router.push("/recovery")} />
+        </AppCard>
+      </ScreenSection>
+
+      <View style={{ flexDirection: "row", gap: spacing.sm }}>
+        <RecordTile
+          complete={Boolean(moveEntry)}
+          helper={moveEntry?.meaning ?? "운동 종류와 시간을 남깁니다."}
+          icon={Footprints}
+          onPress={() => router.push("/train")}
+          title="Move"
+          value={
+            moveEntry
+              ? `${moveEntry.category} · ${formatMinutes(moveEntry.durationMinutes)}`
+              : "비어 있음"
+          }
+        />
+        <RecordTile
+          complete={Boolean(mindEntry)}
+          helper={mindEntry?.meaning ?? "독서, 공부, 회고를 남깁니다."}
+          icon={Brain}
+          onPress={() => router.push("/reflect")}
+          title="Mind"
+          value={mindEntry?.title ?? "비어 있음"}
+        />
+      </View>
+
+      <ScreenSection title="Body">
+        <AppCard tone="plain">
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <UserRound color={colors.ink} size={22} strokeWidth={2.4} />
+            <View style={{ flex: 1, gap: spacing.xs }}>
+              <Text selectable style={{ color: colors.ink, fontSize: 19, fontWeight: "900" }}>
+                {bodySummary}
+              </Text>
+              <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
+                {latestBody
+                  ? `체지방률 ${numberText(latestBody.bodyFatPercent, "%")} · 컨디션 ${
+                      latestBody.condition ?? "-"
+                    }`
+                  : "신체 정보는 개인 기록이며 커뮤니티에 자동 공유하지 않습니다."}
+              </Text>
+            </View>
+            <StatusDot active={bodyLoggedToday} />
+          </View>
+          <ActionLink label="Body" onPress={() => router.push("/body")} />
+        </AppCard>
+      </ScreenSection>
+
+      <ScreenSection title="나의 기준">
+        <AppCard tone="plain">
+          <View style={{ gap: spacing.md }}>
+            {report.routineSignals.length ? (
+              report.routineSignals.slice(0, 4).map((signal) => (
+                <View key={signal.routineId} style={{ gap: spacing.xs }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      gap: spacing.sm
+                    }}
+                  >
+                    <Text
+                      selectable
+                      style={{ color: colors.ink, flex: 1, fontSize: 15, fontWeight: "900" }}
+                    >
+                      {signal.title}
+                    </Text>
+                    <Text
+                      selectable
+                      style={{ color: colors.mutedInk, fontSize: 13, fontWeight: "900" }}
+                    >
+                      {signal.actualCount}/{signal.expectedCount}
+                    </Text>
+                  </View>
+                  <ProgressBar value={signal.progress} />
+                </View>
+              ))
+            ) : (
+              <View style={{ gap: spacing.xs }}>
+                <Text selectable style={{ color: colors.ink, fontSize: 17, fontWeight: "900" }}>
+                  아직 기준이 없습니다.
+                </Text>
+                <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
+                  주 3회 운동, 물 1L, 취침 시간 같은 기준을 정하면 완료율이 보입니다.
+                </Text>
+              </View>
+            )}
+          </View>
           <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
-            {mealLogs.length
-              ? `오늘 ${calories}kcal, 단백질 ${protein}g을 기록했습니다.`
-              : "끼니별로 음식명과 g 단위를 남기면 영양 기준이 선명해집니다."}
+            {report.message}
           </Text>
         </AppCard>
       </ScreenSection>
 
-      <ScreenSection title="오늘 남긴 것">
+      <ScreenSection title="오늘 남긴 문장">
+        <AppCard tone="plain">
+          <Text
+            selectable
+            style={{ color: colors.ink, fontSize: 18, fontWeight: "900", lineHeight: 25 }}
+          >
+            “{todaySentence}”
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={() => router.push("/community")}
+            style={({ pressed }) => ({
+              alignItems: "center",
+              flexDirection: "row",
+              gap: spacing.xs,
+              opacity: pressed ? 0.62 : 1,
+              paddingVertical: spacing.xs
+            })}
+          >
+            <Check color={colors.ink} size={14} strokeWidth={2.5} />
+            <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "900" }}>
+              작은 인증 보기
+            </Text>
+          </Pressable>
+        </AppCard>
+      </ScreenSection>
+
+      <ScreenSection title="오늘 남긴 기록">
         {todayEntries.length ? (
-          todayEntries.slice(0, 5).map((entry) => (
+          todayEntries.slice(0, 4).map((entry) => (
             <AppCard key={entry.id} tone="plain">
               <Text selectable style={{ color: colors.ink, fontSize: 17, fontWeight: "900" }}>
                 {stackLabels[entry.stack]} · {entry.title}
@@ -349,14 +558,14 @@ export default function HomeScreen() {
         ) : (
           <EmptyState
             title="아직 오늘 남긴 것이 없습니다."
-            body="Meal, Move, Recovery, Mind, Body 중 하나부터 시작하세요."
+            body="Meal, Recovery, Move, Mind, Body 중 하나부터 시작하세요."
           />
         )}
       </ScreenSection>
 
-      <ScreenSection title="공지">
-        {(noticesQuery.data ?? []).length ? (
-          (noticesQuery.data ?? []).map((notice) => (
+      {(noticesQuery.data ?? []).length ? (
+        <ScreenSection title="공지">
+          {(noticesQuery.data ?? []).map((notice) => (
             <AppCard key={notice.id} tone={notice.priority === "important" ? "amber" : "plain"}>
               <Text selectable style={{ color: colors.ink, fontSize: 17, fontWeight: "900" }}>
                 {notice.title}
@@ -365,14 +574,9 @@ export default function HomeScreen() {
                 {notice.body}
               </Text>
             </AppCard>
-          ))
-        ) : (
-          <EmptyState
-            title="아직 공지가 없습니다."
-            body="관리자는 Supabase Dashboard에서 공지를 추가할 수 있습니다."
-          />
-        )}
-      </ScreenSection>
+          ))}
+        </ScreenSection>
+      ) : null}
 
       <SecondaryButton icon={LogOut} label="로그아웃" onPress={signOut} />
     </ScrollView>
