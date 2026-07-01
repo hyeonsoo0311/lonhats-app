@@ -42,6 +42,7 @@ export type WorkoutSet = {
 
 export type WorkoutLog = {
   id: string;
+  sourceLifeEntryId: string | null;
   exerciseId: string | null;
   exerciseName: string;
   exerciseCategory: string | null;
@@ -97,16 +98,38 @@ export type FoodItem = {
   name: string;
   brandName: string | null;
   servingGram: number;
+  servingUnit?: "g";
   caloriesPerServing: number;
   proteinGram: number;
   carbsGram: number;
   fatGram: number;
   source: string;
   sourceId: string | null;
+  sourceDescription?: string | null;
+  sourceReference?: string | null;
+  contributorDisplayName: string | null;
+};
+
+export type FoodSubmissionStatus = "pending" | "approved" | "rejected";
+
+export type FoodSubmission = {
+  id: string;
+  contributorDisplayName: string;
+  name: string;
+  brandName: string | null;
+  servingGram: number;
+  caloriesPerServing: number;
+  proteinGram: number;
+  carbsGram: number;
+  fatGram: number;
+  referenceNote: string | null;
+  status: FoodSubmissionStatus;
+  createdAt: string;
 };
 
 export type MealLog = {
   id: string;
+  sourceLifeEntryId: string | null;
   eatenOn: string;
   mealType: string;
   rawText: string;
@@ -174,6 +197,14 @@ export type AppNotice = {
   title: string;
   body: string;
   priority: "normal" | "important";
+};
+
+export type AccountDeletionRequest = {
+  id: string;
+  status: "open" | "reviewing" | "completed" | "cancelled";
+  reason: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type DaySummary = {

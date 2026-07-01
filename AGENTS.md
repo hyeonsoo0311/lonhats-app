@@ -30,6 +30,7 @@ Before implementing product work, read these files:
 - `docs/FEATURE_SPEC.md`: current feature requirements and behavior.
 - `docs/UI_RULES.md`: interface, tone, writing, and visual rules.
 - `docs/TASKS.md`: current backlog and implementation priorities.
+- `docs/DATA_SOURCES.md`: allowed data sources, traceability rules, and forbidden data.
 
 Older files such as `docs/product.md`, `docs/features.md`, and `docs/data-model.md` may contain useful context, but the uppercase docs above are the current working references.
 
@@ -157,7 +158,7 @@ git --git-dir=.git-codex --work-tree=. push
 - `life_routines` and `life_routine_checkins` store each user's personal routine criteria and manual confirmations for life temperature and humidity.
 - `body_logs` stores private body state records and must not be shared automatically.
 - The `Better tomorrow` community is one channel for now.
-- Bottom tabs should stay focused on `홈`, `Today`, `커뮤니티`, and `일기`. Stack recording screens are reached from Today/Home.
+- Bottom tabs should stay focused on `오늘`, `커뮤니티`, `리포트`, and `마이`. Focused stack recording screens are reached from Home.
 - The active brand direction is minimal, typographic, black-and-white, and editorial. Avoid pastel stack cards and playful category colors.
 
 ## Decision Rule

@@ -147,13 +147,21 @@ create table if not exists public.food_items (
   protein_gram numeric not null default 0,
   carbs_gram numeric not null default 0,
   fat_gram numeric not null default 0,
-  source text not null default 'seed',
-  source_id text,
+  source text not null,
+  source_id text not null,
+  source_reference text,
   created_at timestamptz not null default now()
 );
 
 create unique index if not exists food_items_source_name_source_id_key
   on public.food_items (source, name, coalesce(source_id, ''));
+
+alter table public.food_items
+  drop constraint if exists food_items_no_unsourced_seed,
+  add constraint food_items_no_unsourced_seed check (source <> 'seed'),
+  drop constraint if exists food_items_community_reference_required,
+  add constraint food_items_community_reference_required
+    check (source <> 'community-approved' or nullif(source_reference, '') is not null);
 
 alter table public.food_items enable row level security;
 
@@ -465,21 +473,6 @@ grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant select on public.food_items to authenticated;
 grant select on public.app_notices to authenticated;
-
-insert into public.food_items
-  (name, serving_gram, calories_per_serving, protein_gram, carbs_gram, fat_gram, source, source_id)
-values
-  ('닭가슴살', 100, 165, 31, 0, 3.6, 'seed', 'chicken-breast'),
-  ('현미밥', 210, 320, 6, 68, 2.5, 'seed', 'brown-rice-bowl'),
-  ('흰쌀밥', 210, 315, 5.6, 70, 0.7, 'seed', 'white-rice-bowl'),
-  ('삶은 달걀', 50, 78, 6.3, 0.6, 5.3, 'seed', 'boiled-egg'),
-  ('고구마', 100, 128, 1.4, 30, 0.2, 'seed', 'sweet-potato'),
-  ('바나나', 100, 89, 1.1, 23, 0.3, 'seed', 'banana'),
-  ('그릭요거트', 100, 95, 9, 4, 5, 'seed', 'greek-yogurt'),
-  ('두부', 100, 76, 8, 1.9, 4.8, 'seed', 'tofu'),
-  ('연어', 100, 208, 20, 0, 13, 'seed', 'salmon'),
-  ('아보카도', 100, 160, 2, 8.5, 14.7, 'seed', 'avocado')
-on conflict do nothing;
 
 insert into public.app_notices (title, body, priority, is_published, published_at)
 values (

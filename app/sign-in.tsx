@@ -2,12 +2,12 @@ import { AppCard, Field, PrimaryButton, SecondaryButton } from "@/components/ui"
 import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
 import { Redirect } from "expo-router";
-import { LogIn, UserPlus } from "lucide-react-native";
+import { KeyRound, LogIn, UserPlus } from "lucide-react-native";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native";
 
 export default function SignInScreen() {
-  const { loading: authLoading, session, signIn, signUp } = useAuth();
+  const { loading: authLoading, resetPassword, session, signIn, signUp } = useAuth();
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -45,6 +45,29 @@ export default function SignInScreen() {
       }
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "인증 처리에 실패했습니다.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleResetPassword() {
+    setError("");
+    setMessage("");
+
+    if (!email.trim()) {
+      setError("비밀번호를 재설정할 이메일을 입력해주세요.");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const nextMessage = await resetPassword(email);
+      setMessage(`${nextMessage} 메일의 링크를 열어 새 비밀번호를 설정하세요.`);
+    } catch (resetError) {
+      setError(
+        resetError instanceof Error ? resetError.message : "재설정 메일 발송에 실패했습니다."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -127,6 +150,14 @@ export default function SignInScreen() {
               label={submitting ? "처리 중" : mode === "sign-up" ? "인증 메일 받기" : "로그인"}
               onPress={handleSubmit}
             />
+            {mode === "sign-in" ? (
+              <SecondaryButton
+                disabled={submitting}
+                icon={KeyRound}
+                label="비밀번호 재설정 메일 받기"
+                onPress={handleResetPassword}
+              />
+            ) : null}
           </View>
         </AppCard>
       </ScrollView>

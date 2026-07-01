@@ -5,19 +5,29 @@ import {
   MetricCard,
   Pill,
   PrimaryButton,
-  ScreenSection
+  ScreenSection,
+  SecondaryButton
 } from "@/components/ui";
 import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
 import { analyzeLifeDirection } from "@/lib/analysis";
-import { defaultGaugeCriteria, gaugeRangeLabel, scoreToLifeTemperature } from "@/lib/gauge";
+import { calendarWeekStartKey, localDateKey } from "@/lib/date";
+import {
+  defaultGaugeCriteria,
+  gaugeRangeLabel,
+  lifeTemperatureToScore,
+  scoreToLifeTemperature
+} from "@/lib/gauge";
 import {
   createLifeRoutine,
+  createUserFeedback,
   deactivateLifeRoutine,
+  getActiveAccountDeletionRequest,
   getLifeGaugeCriteria,
   getLifeRoutines,
   getRoutineCheckins,
   getWeeklyLifeEntries,
+  requestAccountDeletion,
   upsertLifeGaugeCriteria,
   upsertRoutineCheckin
 } from "@/lib/database";
@@ -26,22 +36,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
   Droplets,
+  MessageCircle,
   Plus,
   Save,
+  Send,
   SlidersHorizontal,
   Thermometer,
-  Trash2
+  Trash2,
+  UserX
 } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
-const defaults = {
-  temperatureDefinition: "나에게 삶의 온도는 내가 정한 기준을 향해 움직이는 힘이다.",
-  temperatureLowNote: "온도가 낮다는 것은 움직임과 몰입 기준이 흔들리는 신호다.",
-  temperatureHighNote: "온도가 너무 높다는 것은 무리하거나 과열되는 신호일 수 있다.",
-  humidityDefinition: "나에게 삶의 습도는 회복, 식사 리듬, 마음의 안정감이다.",
-  humidityLowNote: "습도가 낮다는 것은 회복과 생활 리듬 기준을 다시 봐야 한다는 신호다.",
-  humidityHighNote: "습도가 너무 높다는 것은 편안하지만 정체되어 있는지 살펴볼 신호다."
+const meaningPlaceholders = {
+  temperatureDefinition: "예: 온도는 Move와 Mind처럼 실행형 기준을 지킨 정도로 읽겠습니다.",
+  temperatureLowNote: "예: 온도가 낮으면 기준을 더 작게 쪼개거나 이번 주 목표 횟수를 낮춥니다.",
+  temperatureHighNote: "예: 온도가 높아도 피로가 크면 다음 목표를 무리하게 올리지 않습니다.",
+  humidityDefinition: "예: 습도는 회복, 식사 리듬, 마음의 안정감처럼 하루를 유지시키는 질감입니다.",
+  humidityLowNote: "예: 습도가 낮으면 수면, 식사, 휴식 기준부터 다시 챙깁니다.",
+  humidityHighNote: "예: 습도가 높으면 생활 리듬이 안정적으로 유지되고 있는지 봅니다."
 };
 
 const stackOptions: { label: string; value: LifeStackKey | null }[] = [
@@ -53,9 +66,7 @@ const stackOptions: { label: string; value: LifeStackKey | null }[] = [
 ];
 
 const cadenceOptions: { label: string; value: RoutineCadence }[] = [
-  { label: "매일", value: "daily" },
-  { label: "주간", value: "weekly" },
-  { label: "월간", value: "monthly" }
+  { label: "주간", value: "weekly" }
 ];
 
 const cadenceLabels: Record<RoutineCadence, string> = {
@@ -64,31 +75,63 @@ const cadenceLabels: Record<RoutineCadence, string> = {
   monthly: "월간"
 };
 
-function toTemperature(value: string, fallback: number) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? Number(parsed.toFixed(1)) : fallback;
-}
+const routineExamples: {
+  label: string;
+  title: string;
+  stack: LifeStackKey | null;
+  targetCount: string;
+  helper: string;
+}[] = [
+  {
+    label: "주 3회 헬스장",
+    title: "헬스장 가기",
+    stack: "move",
+    targetCount: "3",
+    helper: "Move · 이번 주 3회"
+  },
+  {
+    label: "하루 물 2L",
+    title: "물 2L 마시기",
+    stack: "meal",
+    targetCount: "7",
+    helper: "Meal · 매일 1회, 주 7회"
+  },
+  {
+    label: "월 1권 독서",
+    title: "책 읽기",
+    stack: "mind",
+    targetCount: "2",
+    helper: "Mind · 월간 목표를 주간 행동 2회로 환산"
+  },
+  {
+    label: "6시간 이상 숙면",
+    title: "6시간 이상 숙면",
+    stack: "recovery",
+    targetCount: "7",
+    helper: "Recovery · 매일 1회, 주 7회"
+  }
+];
 
-function toPercent(value: string, fallback: number) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.min(Math.max(Math.round(parsed), 0), 100) : fallback;
-}
+const feedbackCategories = [
+  { label: "막힌 부분", value: "blocker" },
+  { label: "불편한 부분", value: "friction" },
+  { label: "필요한 기능", value: "feature_request" },
+  { label: "기타", value: "general" }
+] as const;
 
-function temperatureCToScore(value: number) {
-  return Math.min(Math.max(Math.round(((value - 35.5) / 2.5) * 100), 0), 100);
-}
+type FeedbackCategory = (typeof feedbackCategories)[number]["value"];
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateKey();
 }
 
 function routineWeights(stack: LifeStackKey | null) {
   if (stack === "move") {
-    return { temperatureWeight: 3, humidityWeight: 1 };
+    return { temperatureWeight: 3, humidityWeight: 0 };
   }
 
   if (stack === "meal") {
-    return { temperatureWeight: 1, humidityWeight: 2 };
+    return { temperatureWeight: 1, humidityWeight: 3 };
   }
 
   if (stack === "recovery") {
@@ -99,7 +142,7 @@ function routineWeights(stack: LifeStackKey | null) {
     return { temperatureWeight: 2, humidityWeight: 2 };
   }
 
-  return { temperatureWeight: 1, humidityWeight: 1 };
+  return { temperatureWeight: 2, humidityWeight: 2 };
 }
 
 function targetCountFrom(value: string, fallback = 1) {
@@ -111,10 +154,6 @@ export default function CriteriaScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const userId = user?.id ?? "";
-  const [temperatureMinC, setTemperatureMinC] = useState<string | null>(null);
-  const [temperatureMaxC, setTemperatureMaxC] = useState<string | null>(null);
-  const [humidityMinPercent, setHumidityMinPercent] = useState<string | null>(null);
-  const [humidityMaxPercent, setHumidityMaxPercent] = useState<string | null>(null);
   const [temperatureDefinition, setTemperatureDefinition] = useState<string | null>(null);
   const [temperatureLowNote, setTemperatureLowNote] = useState<string | null>(null);
   const [temperatureHighNote, setTemperatureHighNote] = useState<string | null>(null);
@@ -125,6 +164,12 @@ export default function CriteriaScreen() {
   const [routineStack, setRoutineStack] = useState<LifeStackKey | null>("move");
   const [routineCadence, setRoutineCadence] = useState<RoutineCadence>("weekly");
   const [routineTargetCount, setRoutineTargetCount] = useState("3");
+  const [showAccountManagement, setShowAccountManagement] = useState(false);
+  const [deletionReason, setDeletionReason] = useState("");
+  const [accountNotice, setAccountNotice] = useState("");
+  const [feedbackCategory, setFeedbackCategory] = useState<FeedbackCategory>("friction");
+  const [feedbackBody, setFeedbackBody] = useState("");
+  const [feedbackNotice, setFeedbackNotice] = useState("");
   const [error, setError] = useState("");
 
   const criteriaQuery = useQuery({
@@ -147,6 +192,11 @@ export default function CriteriaScreen() {
     queryFn: () => getRoutineCheckins(userId),
     enabled: Boolean(userId)
   });
+  const deletionRequestQuery = useQuery({
+    queryKey: ["account-deletion-request", userId],
+    queryFn: () => getActiveAccountDeletionRequest(userId),
+    enabled: Boolean(userId)
+  });
 
   const routines = useMemo(() => routinesQuery.data ?? [], [routinesQuery.data]);
   const checkins = useMemo(() => checkinsQuery.data ?? [], [checkinsQuery.data]);
@@ -159,41 +209,24 @@ export default function CriteriaScreen() {
     [checkins, routines, weeklyQuery.data]
   );
   const criteria = criteriaQuery.data;
-  const temperatureMinValue =
-    temperatureMinC ??
-    String(criteria?.temperatureMinC ?? defaultGaugeCriteria.temperatureMinC.toFixed(1));
-  const temperatureMaxValue =
-    temperatureMaxC ??
-    String(criteria?.temperatureMaxC ?? defaultGaugeCriteria.temperatureMaxC.toFixed(1));
-  const humidityMinValue =
-    humidityMinPercent ??
-    String(criteria?.humidityMinPercent ?? defaultGaugeCriteria.humidityMinPercent);
-  const humidityMaxValue =
-    humidityMaxPercent ??
-    String(criteria?.humidityMaxPercent ?? defaultGaugeCriteria.humidityMaxPercent);
-  const temperatureDefinitionValue =
-    temperatureDefinition ?? criteria?.temperatureDefinition ?? defaults.temperatureDefinition;
-  const temperatureLowNoteValue =
-    temperatureLowNote ?? criteria?.temperatureLowNote ?? defaults.temperatureLowNote;
-  const temperatureHighNoteValue =
-    temperatureHighNote ?? criteria?.temperatureHighNote ?? defaults.temperatureHighNote;
-  const humidityDefinitionValue =
-    humidityDefinition ?? criteria?.humidityDefinition ?? defaults.humidityDefinition;
-  const humidityLowNoteValue =
-    humidityLowNote ?? criteria?.humidityLowNote ?? defaults.humidityLowNote;
-  const humidityHighNoteValue =
-    humidityHighNote ?? criteria?.humidityHighNote ?? defaults.humidityHighNote;
-  const temperatureMin = toTemperature(temperatureMinValue, defaultGaugeCriteria.temperatureMinC);
-  const temperatureMax = toTemperature(temperatureMaxValue, defaultGaugeCriteria.temperatureMaxC);
-  const humidityMin = toPercent(humidityMinValue, defaultGaugeCriteria.humidityMinPercent);
-  const humidityMax = toPercent(humidityMaxValue, defaultGaugeCriteria.humidityMaxPercent);
+  const temperatureDefinitionValue = temperatureDefinition ?? criteria?.temperatureDefinition ?? "";
+  const temperatureLowNoteValue = temperatureLowNote ?? criteria?.temperatureLowNote ?? "";
+  const temperatureHighNoteValue = temperatureHighNote ?? criteria?.temperatureHighNote ?? "";
+  const humidityDefinitionValue = humidityDefinition ?? criteria?.humidityDefinition ?? "";
+  const humidityLowNoteValue = humidityLowNote ?? criteria?.humidityLowNote ?? "";
+  const humidityHighNoteValue = humidityHighNote ?? criteria?.humidityHighNote ?? "";
+  const temperatureMin = defaultGaugeCriteria.temperatureMinC;
+  const temperatureMax = defaultGaugeCriteria.temperatureMaxC;
+  const humidityMin = defaultGaugeCriteria.humidityMinPercent;
+  const humidityMax = defaultGaugeCriteria.humidityMaxPercent;
   const lifeTemperature = scoreToLifeTemperature(report.temperature);
   const today = todayKey();
+  const weekStart = calendarWeekStartKey();
 
   const saveMutation = useMutation({
     mutationFn: () =>
       upsertLifeGaugeCriteria(userId, {
-        targetTemperature: temperatureCToScore((temperatureMin + temperatureMax) / 2),
+        targetTemperature: lifeTemperatureToScore((temperatureMin + temperatureMax) / 2),
         targetHumidity: Math.round((humidityMin + humidityMax) / 2),
         temperatureMinC: temperatureMin,
         temperatureMaxC: temperatureMax,
@@ -224,8 +257,8 @@ export default function CriteriaScreen() {
       return createLifeRoutine(userId, {
         title: routineTitle.trim(),
         stack: routineStack,
-        cadence: routineCadence,
-        targetCount: routineCadence === "daily" ? 1 : targetCountFrom(routineTargetCount),
+        cadence: "weekly",
+        targetCount: targetCountFrom(routineTargetCount),
         ...weights
       });
     },
@@ -265,19 +298,49 @@ export default function CriteriaScreen() {
     },
     onError: (mutationError) => {
       setError(
-        mutationError instanceof Error
-          ? mutationError.message
-          : "루틴 기준 비활성화에 실패했습니다."
+        mutationError instanceof Error ? mutationError.message : "루틴 비활성화에 실패했습니다."
+      );
+    }
+  });
+
+  const deletionMutation = useMutation({
+    mutationFn: () =>
+      requestAccountDeletion(userId, {
+        email: user?.email ?? null,
+        reason: deletionReason
+      }),
+    onSuccess: () => {
+      setError("");
+      setDeletionReason("");
+      setAccountNotice("계정 삭제 요청이 접수되었습니다. 관리자가 데이터를 확인합니다.");
+      queryClient.invalidateQueries({ queryKey: ["account-deletion-request", userId] });
+    },
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof Error ? mutationError.message : "계정 삭제 요청에 실패했습니다."
+      );
+    }
+  });
+
+  const feedbackMutation = useMutation({
+    mutationFn: () =>
+      createUserFeedback(userId, {
+        category: feedbackCategory,
+        body: feedbackBody
+      }),
+    onSuccess: () => {
+      setError("");
+      setFeedbackBody("");
+      setFeedbackNotice("피드백이 저장되었습니다. 베타 개선 목록에 반영하겠습니다.");
+    },
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof Error ? mutationError.message : "피드백 저장에 실패했습니다."
       );
     }
   });
 
   function handleSave() {
-    if (temperatureMin > temperatureMax || humidityMin > humidityMax) {
-      setError("기준 범위의 시작값이 끝값보다 클 수 없습니다.");
-      return;
-    }
-
     if (!temperatureDefinitionValue.trim() || !humidityDefinitionValue.trim()) {
       setError("온도와 습도의 의미를 입력해주세요.");
       return;
@@ -300,23 +363,48 @@ export default function CriteriaScreen() {
     createRoutineMutation.mutate();
   }
 
+  function handleDeletionRequest() {
+    if (!userId) {
+      setError("로그인 상태를 확인할 수 없습니다.");
+      return;
+    }
+
+    deletionMutation.mutate();
+  }
+
+  function handleFeedbackSubmit() {
+    if (!userId) {
+      setError("로그인 상태를 확인할 수 없습니다.");
+      return;
+    }
+
+    if (feedbackBody.trim().length < 4) {
+      setError("피드백을 한 줄 이상 남겨주세요.");
+      return;
+    }
+
+    feedbackMutation.mutate();
+  }
+
+  const deletionRequest = deletionRequestQuery.data;
+
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
       style={{ backgroundColor: colors.canvas }}
       contentContainerStyle={{ gap: spacing.lg, padding: spacing.md, paddingBottom: 110 }}
     >
-      <ScreenSection title="기준" action="Home setting">
+      <ScreenSection title="기준" action="My">
         <AppCard tone="plain">
           <View style={{ flexDirection: "row", gap: spacing.sm }}>
             <SlidersHorizontal color={colors.ink} size={22} strokeWidth={2.4} />
             <View style={{ flex: 1, gap: spacing.xs }}>
               <Text selectable style={{ color: colors.ink, fontSize: 18, fontWeight: "900" }}>
-                나의 루틴이 온도와 습도를 만듭니다.
+                나의 목표 루틴이 온도와 습도를 만듭니다.
               </Text>
               <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
-                기본 적정 범위는 온도 36.0°C-37.3°C, 습도 40%-50%입니다. 숫자는 유지하되, 평가는
-                내가 정한 기준이 얼마나 지켜졌는지로 봅니다.
+                사용자는 목표를 세우고, 앱은 그 목표가 지켜진 정도를 고정 기준으로 해석합니다.
+                범위는 앱이 정하고 사용자는 의미와 루틴만 정합니다.
               </Text>
             </View>
           </View>
@@ -344,13 +432,100 @@ export default function CriteriaScreen() {
         </View>
       </View>
 
-      <ScreenSection title="나의 루틴 기준" action={`${routines.length}/7`}>
+      <ScreenSection title="앱 기준">
         <AppCard tone="plain">
+          <View style={{ gap: spacing.xs }}>
+            <Text selectable style={{ color: colors.ink, fontSize: 16, fontWeight: "900" }}>
+              온도 15-25°C
+            </Text>
+            <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}>
+              정량적 실행 신호입니다. 운동, 공부, 프로젝트처럼 목표를 실제 행동으로 옮긴 정도를 더
+              크게 봅니다.
+            </Text>
+          </View>
+          <View
+            style={{
+              borderTopColor: colors.line,
+              borderTopWidth: 1,
+              gap: spacing.xs,
+              paddingTop: spacing.sm
+            }}
+          >
+            <Text selectable style={{ color: colors.ink, fontSize: 16, fontWeight: "900" }}>
+              습도 40-50%
+            </Text>
+            <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}>
+              정성적 리듬 신호입니다. 식사, 회복, 수면, 마음의 안정처럼 하루가 마르지 않게
+              유지되는지를 봅니다.
+            </Text>
+          </View>
+        </AppCard>
+      </ScreenSection>
+
+      <ScreenSection title="나의 주간 루틴 기준" action={`${routines.length}/7`}>
+        <AppCard tone="plain">
+          <View style={{ gap: spacing.xs }}>
+            <Text selectable style={{ color: colors.ink, fontSize: 16, fontWeight: "900" }}>
+              평가 가능한 기준으로 적어주세요.
+            </Text>
+            <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}>
+              좋은 기준은 행동, 기간, 숫자가 함께 있습니다. 예: 일주일 3번 헬스장 가기, 하루 물 2L
+              마시기, 하루 6시간 이상 숙면.
+            </Text>
+            <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}>
+              현재 MVP는 주간 횟수로 평가합니다. 매일 해야 하는 기준은 목표 횟수를 7로 두고, 월간
+              목표는 이번 주에 할 행동 단위로 바꿔 입력하세요.
+            </Text>
+          </View>
+          <View style={{ gap: spacing.xs }}>
+            <Text selectable style={{ color: colors.ink, fontSize: 13, fontWeight: "900" }}>
+              예시로 시작하기
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+              {routineExamples.map((example) => (
+                <Pressable
+                  key={example.label}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setRoutineTitle(example.title);
+                    setRoutineStack(example.stack);
+                    setRoutineCadence("weekly");
+                    setRoutineTargetCount(example.targetCount);
+                  }}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.72 : 1 })}
+                >
+                  <View
+                    style={{
+                      borderColor: colors.line,
+                      borderRadius: 999,
+                      borderWidth: 1,
+                      gap: 2,
+                      paddingHorizontal: spacing.md,
+                      paddingVertical: spacing.sm
+                    }}
+                  >
+                    <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "900" }}>
+                      {example.label}
+                    </Text>
+                    <Text style={{ color: colors.mutedInk, fontSize: 11, fontWeight: "800" }}>
+                      {example.helper}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+          <Text selectable style={{ color: colors.ink, fontSize: 13, fontWeight: "900" }}>
+            기준 이름
+          </Text>
           <Field
             value={routineTitle}
             onChangeText={setRoutineTitle}
-            placeholder="예: 주 3회 운동 가기"
+            placeholder="예: 헬스장 가기, 물 2L 마시기, 6시간 이상 숙면"
           />
+          <Text selectable style={{ color: colors.ink, fontSize: 13, fontWeight: "900" }}>
+            어느 Stack에 가까운가요?
+          </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
             {stackOptions.map((option) => (
               <Pressable
@@ -362,6 +537,9 @@ export default function CriteriaScreen() {
               </Pressable>
             ))}
           </View>
+          <Text selectable style={{ color: colors.ink, fontSize: 13, fontWeight: "900" }}>
+            평가 기간
+          </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
             {cadenceOptions.map((option) => (
               <Pressable
@@ -373,18 +551,19 @@ export default function CriteriaScreen() {
               </Pressable>
             ))}
           </View>
-          {routineCadence === "daily" ? (
-            <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}>
-              매일 기준은 하루에 한 번 지키는 것으로 계산합니다.
-            </Text>
-          ) : (
-            <Field
-              keyboardType="numeric"
-              value={routineTargetCount}
-              onChangeText={setRoutineTargetCount}
-              placeholder="목표 횟수"
-            />
-          )}
+          <Text selectable style={{ color: colors.ink, fontSize: 13, fontWeight: "900" }}>
+            이번 주 목표 횟수
+          </Text>
+          <Field
+            keyboardType="numeric"
+            value={routineTargetCount}
+            onChangeText={setRoutineTargetCount}
+            placeholder="이번 주 목표 횟수"
+          />
+          <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}>
+            앱이 자동으로 알 수 없는 기준은 아래 주간 기준 상태에서 직접 체크합니다. 체크한 1회는
+            이번 주 진행률과 온도, 습도에 반영됩니다.
+          </Text>
           <PrimaryButton
             disabled={createRoutineMutation.isPending}
             icon={Plus}
@@ -394,7 +573,7 @@ export default function CriteriaScreen() {
         </AppCard>
       </ScreenSection>
 
-      <ScreenSection title="기준 상태">
+      <ScreenSection title="주간 기준 상태">
         {routines.length ? (
           <View style={{ gap: spacing.sm }}>
             {routines.map((routine) => {
@@ -405,12 +584,27 @@ export default function CriteriaScreen() {
                   checkin.checkedOn === today &&
                   checkin.completed
               );
+              const checkedThisWeek = checkins.some(
+                (checkin) =>
+                  checkin.routineId === routine.id &&
+                  checkin.checkedOn >= weekStart &&
+                  checkin.completed
+              );
+              const progress = signal?.progress ?? 0;
+              const actualCount = signal?.actualCount ?? 0;
+              const expectedCount = signal?.expectedCount ?? routine.targetCount;
 
               return (
                 <AppCard key={routine.id} tone="plain">
                   <View style={{ flexDirection: "row", gap: spacing.sm }}>
                     <CheckCircle2
-                      color={checkedToday ? colors.ink : colors.mutedInk}
+                      color={
+                        progress >= 100
+                          ? colors.ink
+                          : checkedThisWeek
+                            ? colors.moss
+                            : colors.mutedInk
+                      }
                       size={22}
                       strokeWidth={2.4}
                     />
@@ -429,10 +623,7 @@ export default function CriteriaScreen() {
                         {routine.stack ? `${routine.stack.toUpperCase()} Stack` : "Life"}
                       </Text>
                     </View>
-                    <Pill
-                      label={`${signal?.progress ?? 0}%`}
-                      active={(signal?.progress ?? 0) >= 80}
-                    />
+                    <Pill label={`${actualCount}/${expectedCount}`} active={progress >= 80} />
                   </View>
                   <Text selectable style={{ color: colors.mutedInk, fontSize: 14, lineHeight: 20 }}>
                     {signal?.message ?? "아직 계산할 기준 기록이 없습니다."}
@@ -446,20 +637,24 @@ export default function CriteriaScreen() {
                   >
                     <Pressable
                       accessibilityRole="button"
-                      disabled={checkinMutation.isPending}
+                      disabled={checkinMutation.isPending || checkedToday}
                       hitSlop={8}
                       onPress={() => checkinMutation.mutate(routine.id)}
                       style={({ pressed }) => ({
                         alignItems: "center",
                         flexDirection: "row",
                         gap: spacing.xs,
-                        opacity: pressed ? 0.62 : checkedToday ? 0.7 : 1,
+                        opacity: checkedToday ? 0.45 : pressed ? 0.62 : 1,
                         paddingVertical: spacing.xs
                       })}
                     >
                       <CheckCircle2 color={colors.ink} size={15} strokeWidth={2.4} />
                       <Text style={{ color: colors.ink, fontSize: 13, fontWeight: "900" }}>
-                        {checkedToday ? "오늘 지킴" : "오늘 지킴 표시"}
+                        {checkedToday
+                          ? "이번 주에 반영됨"
+                          : checkedThisWeek
+                            ? "이번 주 1회 더 지킴"
+                            : "이번 주 1회 지킴"}
                       </Text>
                     </Pressable>
                     <Pressable
@@ -493,84 +688,56 @@ export default function CriteriaScreen() {
         )}
       </ScreenSection>
 
-      <ScreenSection title="적정 범위">
-        <View style={{ gap: spacing.sm }}>
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <View style={{ flex: 1 }}>
-              <Field
-                keyboardType="numeric"
-                value={temperatureMinValue}
-                onChangeText={setTemperatureMinC}
-                placeholder="최소 °C"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Field
-                keyboardType="numeric"
-                value={temperatureMaxValue}
-                onChangeText={setTemperatureMaxC}
-                placeholder="최대 °C"
-              />
-            </View>
-          </View>
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <View style={{ flex: 1 }}>
-              <Field
-                keyboardType="numeric"
-                value={humidityMinValue}
-                onChangeText={setHumidityMinPercent}
-                placeholder="최소 %"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Field
-                keyboardType="numeric"
-                value={humidityMaxValue}
-                onChangeText={setHumidityMaxPercent}
-                placeholder="최대 %"
-              />
-            </View>
-          </View>
-        </View>
-      </ScreenSection>
-
       <ScreenSection title="온도와 습도의 의미">
         <View style={{ gap: spacing.sm }}>
+          <AppCard tone="plain">
+            <Text selectable style={{ color: colors.ink, fontSize: 15, fontWeight: "900" }}>
+              평가는 위의 루틴 기준으로 합니다.
+            </Text>
+            <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}>
+              이곳은 헬스장 가기, 물 2L 마시기 같은 평가 기준을 쓰는 곳이 아닙니다. 온도와 습도 값은
+              위에서 만든 주간 루틴 기준과 체크 여부로 계산됩니다.
+            </Text>
+            <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}>
+              아래 문장은 결과가 낮거나 높게 나왔을 때 내가 어떻게 읽고 조정할지 정하는 해석
+              기준입니다.
+            </Text>
+          </AppCard>
           <Field
             multiline
             value={temperatureDefinitionValue}
             onChangeText={setTemperatureDefinition}
-            placeholder="나에게 삶의 온도란"
+            placeholder={meaningPlaceholders.temperatureDefinition}
           />
           <Field
             multiline
             value={temperatureLowNoteValue}
             onChangeText={setTemperatureLowNote}
-            placeholder="온도가 낮을 때의 신호"
+            placeholder={meaningPlaceholders.temperatureLowNote}
           />
           <Field
             multiline
             value={temperatureHighNoteValue}
             onChangeText={setTemperatureHighNote}
-            placeholder="온도가 높을 때의 신호"
+            placeholder={meaningPlaceholders.temperatureHighNote}
           />
           <Field
             multiline
             value={humidityDefinitionValue}
             onChangeText={setHumidityDefinition}
-            placeholder="나에게 삶의 습도란"
+            placeholder={meaningPlaceholders.humidityDefinition}
           />
           <Field
             multiline
             value={humidityLowNoteValue}
             onChangeText={setHumidityLowNote}
-            placeholder="습도가 낮을 때의 신호"
+            placeholder={meaningPlaceholders.humidityLowNote}
           />
           <Field
             multiline
             value={humidityHighNoteValue}
             onChangeText={setHumidityHighNote}
-            placeholder="습도가 높을 때의 신호"
+            placeholder={meaningPlaceholders.humidityHighNote}
           />
         </View>
       </ScreenSection>
@@ -583,9 +750,121 @@ export default function CriteriaScreen() {
       <PrimaryButton
         disabled={saveMutation.isPending}
         icon={Save}
-        label={saveMutation.isPending ? "저장 중" : "범위와 의미 저장"}
+        label={saveMutation.isPending ? "저장 중" : "의미 저장"}
         onPress={handleSave}
       />
+
+      <ScreenSection title="베타 피드백" action="Beta">
+        <AppCard tone="plain">
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <MessageCircle color={colors.ink} size={22} strokeWidth={2.4} />
+            <View style={{ flex: 1, gap: spacing.xs }}>
+              <Text selectable style={{ color: colors.ink, fontSize: 18, fontWeight: "900" }}>
+                써보다가 막힌 지점을 남겨주세요.
+              </Text>
+              <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}>
+                칭찬보다 막힘, 불편함, 빠진 기능이 더 중요합니다. 작성한 내용은 관리자만 확인합니다.
+              </Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+            {feedbackCategories.map((category) => (
+              <Pressable
+                key={category.value}
+                accessibilityRole="button"
+                onPress={() => setFeedbackCategory(category.value)}
+              >
+                <Pill label={category.label} active={feedbackCategory === category.value} />
+              </Pressable>
+            ))}
+          </View>
+          <Field
+            multiline
+            value={feedbackBody}
+            onChangeText={setFeedbackBody}
+            placeholder="예: 식단 검색에서 무엇을 눌러야 할지 헷갈렸어요."
+          />
+          <SecondaryButton
+            disabled={feedbackMutation.isPending}
+            icon={Send}
+            label={feedbackMutation.isPending ? "저장 중" : "피드백 보내기"}
+            onPress={handleFeedbackSubmit}
+          />
+          {feedbackNotice ? (
+            <Text selectable style={{ color: colors.moss, fontSize: 13, fontWeight: "800" }}>
+              {feedbackNotice}
+            </Text>
+          ) : null}
+        </AppCard>
+      </ScreenSection>
+
+      <View style={{ alignItems: "flex-end", gap: spacing.sm }}>
+        <Pressable
+          accessibilityLabel="계정 관리"
+          accessibilityRole="button"
+          onPress={() => setShowAccountManagement((current) => !current)}
+          style={({ pressed }) => ({
+            alignItems: "center",
+            backgroundColor: showAccountManagement ? colors.ink : colors.white,
+            borderColor: colors.line,
+            borderRadius: 999,
+            borderWidth: 1,
+            height: 42,
+            justifyContent: "center",
+            opacity: pressed ? 0.7 : 1,
+            width: 42
+          })}
+        >
+          <UserX
+            color={showAccountManagement ? colors.canvas : colors.mutedInk}
+            size={18}
+            strokeWidth={2.4}
+          />
+        </Pressable>
+
+        {showAccountManagement ? (
+          <AppCard tone="plain">
+            <View style={{ gap: spacing.sm }}>
+              <Text selectable style={{ color: colors.ink, fontSize: 16, fontWeight: "900" }}>
+                계정 삭제 요청
+              </Text>
+              <Text selectable style={{ color: colors.mutedInk, fontSize: 13, lineHeight: 19 }}>
+                요청이 접수되면 관리자가 Supabase Dashboard에서 계정과 사용자 데이터를 확인해
+                처리합니다. 처리 전에는 다시 로그인할 수 있습니다.
+              </Text>
+              <Text selectable style={{ color: colors.mutedInk, fontSize: 12, lineHeight: 18 }}>
+                계정: {user?.email ?? "이메일 없음"}
+              </Text>
+              {deletionRequest ? (
+                <Pill
+                  label={deletionRequest.status === "reviewing" ? "검토 중" : "삭제 요청 접수됨"}
+                  active
+                />
+              ) : (
+                <View style={{ gap: spacing.sm }}>
+                  <Field
+                    multiline
+                    value={deletionReason}
+                    onChangeText={setDeletionReason}
+                    placeholder="삭제 요청 사유를 남길 수 있습니다. 선택"
+                  />
+                  <SecondaryButton
+                    disabled={deletionMutation.isPending}
+                    icon={UserX}
+                    label={deletionMutation.isPending ? "요청 중" : "계정 삭제 요청"}
+                    onPress={handleDeletionRequest}
+                  />
+                </View>
+              )}
+              {accountNotice ? (
+                <Text selectable style={{ color: colors.moss, fontSize: 13, fontWeight: "800" }}>
+                  {accountNotice}
+                </Text>
+              ) : null}
+            </View>
+          </AppCard>
+        ) : null}
+      </View>
     </ScrollView>
   );
 }

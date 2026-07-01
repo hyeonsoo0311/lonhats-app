@@ -23,11 +23,25 @@ Make Lonhats usable as a record-based community app centered on `Today's Better`
 - Personal life temperature and humidity criteria.
 - Personal routine criteria for life temperature and humidity.
 - Minimal black-and-white brand direction.
-- Unified Today stack creation flow.
+- Daily dashboard with focused stack recording flows.
 - Daily Dashboard home structure.
+- Expandable Home calendar with today centered, year controls, month selection, and record signals.
+- Home water quick row removed; water saves inside Meal Stack rhythm.
+- App-defined life temperature and humidity ranges with routine-based interpretation.
+- Weekly routine criteria UI and progress evaluation.
 - Meal recording with meal slots, gram amount, and nutrition basis.
+- Multi-food meal recording with visible nutrition data sources.
+- Food data reports and admin-approved community food submissions.
+- Representative Korean food, packaged-product, fruit, and vegetable search regression check
+  (`npm run check:food-search`).
 - Recovery sleep recording with bedtime, wake time, and calculated sleep duration.
 - Private Body records.
+- Password reset and update flow.
+- Community post/comment reporting.
+- Community user blocking.
+- Account deletion request queue for Supabase Dashboard handling.
+- In-app beta feedback submission from My.
+- Beta release checklist and tester recruiting copy.
 
 ## Near-Term Tasks
 
@@ -35,10 +49,12 @@ Make Lonhats usable as a record-based community app centered on `Today's Better`
 
 Goal: confirm that a real user can complete the core loop.
 
+Use `docs/BETA_RELEASE_CHECKLIST.md` as the beta readiness source of truth.
+
 Flow:
 
 1. Sign up or log in.
-2. Create one Move, Meal, Recovery, or Mind stack from Today.
+2. Create one Move, Meal, Recovery, or Mind stack from Home.
 3. View the record on the home screen.
 4. Open community.
 5. Select today's record.
@@ -115,7 +131,6 @@ Check:
 - Community feed.
 - Post detail screen.
 - Sign-in screen.
-- Today unified stack screen.
 
 ## Later Tasks
 
@@ -124,7 +139,7 @@ Check:
 - Better food search UX.
 - Better exercise activity matching.
 - Profile editing.
-- Account deletion flow.
+- Automated account deletion execution after admin approval.
 - Report sharing.
 
 ## Task Decision Rule

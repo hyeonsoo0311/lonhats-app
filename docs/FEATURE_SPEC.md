@@ -18,31 +18,26 @@ Every stack record should support:
 - Category.
 - Optional duration.
 - Optional quality, intensity, or rhythm score.
-- Short meaning.
+- Short meaning, encouraged but optional for Meal Stack.
 - Optional note.
 - Creation date.
 
-The meaning field is required for the product experience. A record without emotional context becomes plain tracking, which is not the direction of Lonhats.
+Meaning adds emotional context, but Meal Stack must still be savable when the user only wants to
+capture what they ate.
 
-## Today
+## Daily Recording
 
-`Today` is the unified stack creation page.
-
-The user can complete any combination of:
-
-- Move Stack.
-- Meal Stack.
-- Recovery Stack.
-- Mind Stack.
-- Short daily note.
+Home is the daily dashboard and the single entry point for today's activity. Each stack opens a
+focused recording screen so the user can complete one small action without navigating through a
+second generic recording page.
 
 Rules:
 
 - The user should not be forced to complete all stacks.
 - One completed stack is a valid Today's Better.
 - Detailed fields stay optional.
+- Meal and Move supporting logs must be saved atomically with their matching stack entry.
 - Saving personal stacks should happen before community sharing.
-- After saving, the user can optionally share a small proof.
 - Private details, especially Meal details, should not be automatically shared.
 
 ## Home Daily Dashboard
@@ -54,11 +49,19 @@ It should show:
 - Life temperature.
 - Life humidity.
 - Personal routine completion rate.
-- Clear entry points for `Meal`, `Move`, `Recovery`, `Mind`, and `Body`.
+- Clear entry points for `Meal`, `Move`, `Recovery`, `Mind`, `Body`, and diary.
 - Meal slot status for breakfast, lunch, dinner, and snacks.
+- Water intake should be saved as a Meal Stack rhythm entry, not as a separate Home row.
 - A short list of today's saved records.
 
 Home should make it obvious what the user can record next.
+
+The Home calendar should support:
+
+- A seven-day strip with today centered and three days on each side.
+- An expanded calendar with year controls, all twelve months, and the selected month grid.
+- A visible signal on dates that contain saved records.
+- A short summary of the selected day's saved records inside the expanded calendar.
 
 ## Move Stack
 
@@ -84,19 +87,43 @@ Required:
 
 - Meal type or meal category.
 - Meal slot: breakfast, lunch, dinner, snack, drink, or custom.
-- Food name.
-- Amount in grams when available.
+- One or more foods in the same meal.
+- Amount in grams for each food when available.
 - Meal rhythm signal.
-- Today's meaning.
 
 Optional:
 
 - Calories.
 - Protein, carbohydrates, fat.
 - Food source data.
-- Amount.
+- Today's meaning.
 
 Food analysis should show the serving basis clearly, such as `현미밥 210g 기준 320kcal`. It should help the user understand the record. It should not make the app feel like a strict diet audit.
+Every search result and saved food should show a human-readable data source. One meal creates one
+Meal Stack entry and links all included food items to it.
+
+Food data quality rules:
+
+- Public API nutrients must be mapped per source schema and implausible incomplete results are hidden.
+- Official MFDS food results are limited by the API's origin metadata, not by individual food-code
+  exceptions: household analyzed foods, restaurant analyzed foods, and restaurant
+  ingredient-derived foods, and processed foods.
+- Official raw ingredient results use the national integrated raw ingredient endpoint and are limited
+  to sourced `원재료성 식품` records with an explicit gram basis. This covers fruit, vegetables, nuts,
+  grains, and similar ingredient-level foods.
+- Raw ingredient search results should display common food names such as `사과`, `바나나`, or `오이`
+  instead of technical source names such as cultivar plus preparation state. Keep the source code and
+  official reference for traceability.
+- Unsourced development seed foods must not appear in search or production data.
+- Every approved community food must retain its submitted verification reference.
+- MFDS source codes are presented as readable origin labels instead of raw database codes.
+- Only results with an explicit gram serving basis are shown. Volume-based results are hidden unless
+  a verified food-specific density conversion becomes available.
+- Common Korean aliases such as `계란/달걀` and `후라이/프라이` should resolve to useful foods.
+- Users can report incorrect food information.
+- Users can propose a missing food with serving basis, nutrients, and a verification reference.
+- Proposed foods remain pending until an admin approves them in Supabase Dashboard.
+- Approved community foods show the contributor's Lonhats nickname.
 
 ## Recovery Stack
 
@@ -180,20 +207,23 @@ The diary should not replace stack records. Stack records are for `Today's Bette
 
 ## Personal Criteria
 
-Users can define their own standards for life temperature and life humidity.
+Users can define their own meanings and routine targets for life temperature and life humidity.
+The app owns the healthy display ranges.
 
 The criteria page should support:
 
-- Default optimal life temperature range: `36.0°C` to `37.3°C`.
+- App-defined optimal life temperature range: `15°C` to `25°C`.
 - Default optimal life humidity range: `40%` to `50%`.
-- User-configurable temperature range.
-- User-configurable humidity range.
 - User-defined routine criteria.
-- Daily, weekly, and monthly routine cadence.
+- Weekly routine targets as the default MVP criteria unit.
 - Routine targets such as waking up early, drinking water, exercising weekly, limiting reels, reading monthly, studying, or recovering.
 - Routine association with `Move`, `Meal`, `Recovery`, `Mind`, or general `Life`.
 - Manual routine check-ins for criteria that cannot be inferred from stack records.
-- Automatic routine progress from matching stack records when possible.
+- Automatic routine progress only when the routine title clearly matches the saved stack category.
+- Manual routine check-ins when a match cannot be determined safely.
+- Criteria writing guidance based on measurable behavior, period, and target count. Examples:
+  `go to the gym 3 times a week`, `drink 2L of water each day`, `sleep at least 6 hours each day`,
+  and `read one book a month` translated into weekly action units for MVP.
 - What temperature means to the user.
 - What low temperature means.
 - What overly high temperature means.
@@ -201,7 +231,17 @@ The criteria page should support:
 - What low humidity means.
 - What overly high humidity means.
 
-The home screen compares the current report against the user's saved criteria. If the user has active routine criteria, life temperature and humidity should be based on how those routines are maintained. If no routine criteria exist yet, the app can fall back to stack-record analysis.
+The temperature and humidity meaning fields are interpretive writing, not the scoring formula. The
+UI must explain that values are calculated from weekly routine criteria, routine check-ins, and
+records. Empty meaning fields should show light example placeholders so users know how to write
+their own criteria without mistaking examples for saved values.
+
+Temperature and humidity should represent different signals and should not use the same fallback score when one side has no matching routine weight:
+
+- Life temperature is a more quantitative execution signal: movement, study, project work, and other routines that show action and momentum.
+- Life humidity is a more qualitative rhythm signal: recovery, meal rhythm, sleep, mental steadiness, and other routines that keep the day from drying out.
+
+The home screen compares the current report against the app-defined ranges. If the user has active routine criteria, life temperature and humidity should be based on how those routines are maintained. If no routine criteria exist yet, the app can fall back to stack-record analysis.
 
 ## Community
 
@@ -229,6 +269,8 @@ Small proof posts should support:
 - Quoted reflection.
 - Votes.
 - Comments.
+- Reporting inappropriate posts or comments.
+- Blocking a user so their posts and comments are hidden from the blocker.
 
 Example:
 
@@ -257,6 +299,36 @@ Data structures should leave room for a future admin page:
 - User feedback.
 - Admin notes.
 - App notices.
+- Food submissions and food reports.
+- Community reports.
+- Account deletion requests.
+
+## Beta Feedback
+
+Closed beta users can submit feedback from My.
+
+Feedback should support:
+
+- Category: blocked flow, friction, feature request, or general.
+- Free text body.
+- Authenticated user ownership.
+- Admin review in Supabase Dashboard.
+
+Feedback is for product learning. It should not be shown publicly and should not become a ranking or
+voting feature.
+
+## Account Management
+
+Required:
+
+- Email/password sign-in.
+- Email verification link handling through the app deep link.
+- Password reset email.
+- Password update screen after opening the reset link.
+- In-app account deletion request.
+
+Account deletion is handled as a request for MVP. The request is stored in Supabase for admin
+review and processing. Do not expose service-role deletion from the client app.
 
 ## Non-Goals For Now
 

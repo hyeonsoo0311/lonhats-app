@@ -9,11 +9,14 @@ node_modules/
 .expo-home/
 .dotslash-cache/
 .expo-server*.log
+.expo-go-*.log
 eas-cli-nodejs/
 eas-cli/
 
 # Expo
 .expo/
+supabase/.temp/
+milligram reference/
 dist/
 web-build/
 expo-env.d.ts

@@ -1,23 +1,21 @@
 export const defaultGaugeCriteria = {
-  temperatureMinC: 36.0,
-  temperatureMaxC: 37.3,
+  temperatureMinC: 15,
+  temperatureMaxC: 25,
   humidityMinPercent: 40,
   humidityMaxPercent: 50
 };
 
 export function scoreToLifeTemperature(score: number) {
   const clamped = Math.max(0, Math.min(100, score));
-  return Number((35.5 + (clamped / 100) * 2.5).toFixed(1));
+  return Number((10 + (clamped / 100) * 15).toFixed(1));
 }
 
 export function lifeTemperatureToScore(value: number) {
-  return Math.max(0, Math.min(100, Math.round(((value - 35.5) / 2.5) * 100)));
+  return Math.max(0, Math.min(100, Math.round(((value - 10) / 15) * 100)));
 }
 
 export function adherenceToLifeTemperatureScore(adherence: number) {
-  const clamped = Math.max(0, Math.min(100, adherence));
-  const temperature = 35.8 + (clamped / 100) * 1.3;
-  return lifeTemperatureToScore(temperature);
+  return Math.max(0, Math.min(100, Math.round(adherence)));
 }
 
 export function adherenceToLifeHumidity(adherence: number) {

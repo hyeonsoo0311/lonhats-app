@@ -14,13 +14,13 @@ export function ScreenSection({
   children: ReactNode;
 }) {
   return (
-    <View style={{ gap: spacing.sm }}>
+    <View style={{ gap: spacing.md }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <Text selectable style={{ color: colors.ink, fontSize: 20, fontWeight: "800" }}>
+        <Text selectable style={{ color: colors.ink, fontSize: 19, fontWeight: "900" }}>
           {title}
         </Text>
         {action ? (
-          <Text selectable style={{ color: colors.mutedInk, fontSize: 12, fontWeight: "800" }}>
+          <Text selectable style={{ color: colors.moss, fontSize: 12, fontWeight: "900" }}>
             {action}
           </Text>
         ) : null}
@@ -37,12 +37,20 @@ export function AppCard({
   children: ReactNode;
   tone?: "plain" | "mint" | "blush" | "sky" | "amber";
 }) {
-  const backgroundColor = tone === "amber" ? colors.paper : colors.white;
+  const backgroundColor =
+    tone === "amber"
+      ? colors.paper
+      : tone === "mint"
+        ? colors.mint
+        : tone === "blush"
+          ? colors.blush
+          : colors.white;
 
   return (
     <View
       style={{
         backgroundColor,
+        borderCurve: "continuous",
         borderColor: colors.line,
         borderRadius: radii.md,
         borderWidth: 1,
@@ -117,12 +125,13 @@ export function PrimaryButton({
       onPress={onPress}
       style={({ pressed }) => ({
         alignItems: "center",
-        backgroundColor: disabled ? colors.mutedInk : colors.ink,
+        backgroundColor: disabled ? colors.line : colors.ink,
+        borderCurve: "continuous",
         borderRadius: radii.sm,
         flexDirection: "row",
         gap: spacing.sm,
         justifyContent: "center",
-        minHeight: 48,
+        minHeight: 54,
         opacity: pressed ? 0.82 : 1,
         paddingHorizontal: spacing.md
       })}
@@ -152,13 +161,14 @@ export function SecondaryButton({
       style={({ pressed }) => ({
         alignItems: "center",
         backgroundColor: pressed ? colors.paper : colors.white,
+        borderCurve: "continuous",
         borderColor: colors.line,
         borderRadius: radii.sm,
         borderWidth: 1,
         flexDirection: "row",
         gap: spacing.sm,
         justifyContent: "center",
-        minHeight: 48,
+        minHeight: 52,
         opacity: disabled ? 0.5 : pressed ? 0.88 : 1,
         paddingHorizontal: spacing.md
       })}
@@ -195,13 +205,14 @@ export function Field({
       secureTextEntry={secureTextEntry}
       value={value}
       style={{
-        backgroundColor: colors.white,
+        backgroundColor: colors.paper,
+        borderCurve: "continuous",
         borderColor: colors.line,
         borderRadius: radii.sm,
         borderWidth: 1,
         color: colors.ink,
         fontSize: 16,
-        minHeight: multiline ? 112 : 52,
+        minHeight: multiline ? 112 : 54,
         padding: spacing.md,
         textAlignVertical: multiline ? "top" : "center"
       }}
@@ -244,18 +255,18 @@ export function Pill({ label, active = false }: { label: string; active?: boolea
   return (
     <View
       style={{
-        backgroundColor: active ? colors.ink : colors.paper,
+        backgroundColor: active ? colors.ink : colors.white,
         borderColor: active ? colors.ink : colors.line,
         borderRadius: 999,
         borderWidth: 1,
         paddingHorizontal: spacing.md,
-        paddingVertical: spacing.xs
+        paddingVertical: 9
       }}
     >
       <Text
         selectable
         style={{
-          color: active ? colors.white : colors.mutedInk,
+          color: active ? colors.canvas : colors.ink,
           fontSize: 13,
           fontWeight: "800"
         }}

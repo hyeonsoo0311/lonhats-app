@@ -1,4 +1,12 @@
-import { AppCard, EmptyState, Field, Pill, PrimaryButton, ScreenSection } from "@/components/ui";
+import {
+  AppCard,
+  EmptyState,
+  Field,
+  Pill,
+  PrimaryButton,
+  ScreenSection,
+  SecondaryButton
+} from "@/components/ui";
 import { colors, spacing } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -10,9 +18,12 @@ import {
   splitProofBody
 } from "@/lib/community";
 import {
+  blockCommunityUser,
   createCommunityPost,
+  getCommunityBlockedUserIds,
   getCommunityPosts,
   getTodayLifeEntries,
+  reportCommunityContent,
   voteCommunityPost
 } from "@/lib/database";
 import { stackLabels } from "@/lib/life";
@@ -21,11 +32,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import {
   Brain,
+  Ban,
   CheckCircle2,
+  Flag,
   Footprints,
   MessageCircle,
   Moon,
   Plus,
+  Send,
   ThumbsUp,
   Utensils
 } from "lucide-react-native";
@@ -55,11 +69,19 @@ export default function CommunityScreen() {
   const [challengeDay, setChallengeDay] = useState("5");
   const [summary, setSummary] = useState("");
   const [quote, setQuote] = useState("");
+  const [reportPostId, setReportPostId] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const postsQuery = useQuery({
     queryKey: ["community-posts"],
     queryFn: getCommunityPosts
+  });
+  const blockedUsersQuery = useQuery({
+    queryKey: ["community-blocks", userId],
+    queryFn: () => getCommunityBlockedUserIds(userId),
+    enabled: Boolean(userId)
   });
   const todayEntriesQuery = useQuery({
     queryKey: ["today-life", userId],
@@ -105,6 +127,36 @@ export default function CommunityScreen() {
       voteCommunityPost(userId, postId, value),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["community-posts"] })
   });
+  const reportMutation = useMutation({
+    mutationFn: (postId: string) =>
+      reportCommunityContent(userId, { postId, reason: reportReason.trim() }),
+    onSuccess: () => {
+      setReportPostId(null);
+      setReportReason("");
+      setError("");
+      setNotice("신고가 접수되었습니다. 관리자가 확인합니다.");
+    },
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof Error ? mutationError.message : "신고 접수에 실패했습니다."
+      );
+    }
+  });
+  const blockMutation = useMutation({
+    mutationFn: (blockedUserId: string) =>
+      blockCommunityUser(userId, blockedUserId, "community_feed"),
+    onSuccess: () => {
+      setError("");
+      setNotice("이 사용자의 게시물을 숨겼습니다.");
+      queryClient.invalidateQueries({ queryKey: ["community-blocks", userId] });
+      queryClient.invalidateQueries({ queryKey: ["community-posts"] });
+    },
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof Error ? mutationError.message : "사용자 차단에 실패했습니다."
+      );
+    }
+  });
 
   function selectLifeEntry(entry: LifeEntry) {
     setSelectedStack(entry.stack);
@@ -126,6 +178,20 @@ export default function CommunityScreen() {
 
     createMutation.mutate();
   }
+
+  function handleReportPost(postId: string) {
+    if (!reportReason.trim()) {
+      setError("신고 이유를 입력해주세요.");
+      return;
+    }
+
+    reportMutation.mutate(postId);
+  }
+
+  const blockedUserIds = blockedUsersQuery.data ?? [];
+  const visiblePosts = (postsQuery.data ?? []).filter(
+    (post) => !blockedUserIds.includes(post.authorId)
+  );
 
   return (
     <ScrollView
@@ -213,6 +279,11 @@ export default function CommunityScreen() {
               {error}
             </Text>
           ) : null}
+          {notice ? (
+            <Text selectable style={{ color: colors.moss, fontSize: 14, fontWeight: "800" }}>
+              {notice}
+            </Text>
+          ) : null}
           <PrimaryButton
             disabled={createMutation.isPending}
             icon={Plus}
@@ -251,8 +322,8 @@ export default function CommunityScreen() {
       </ScreenSection>
 
       <ScreenSection title="피드">
-        {(postsQuery.data ?? []).length ? (
-          (postsQuery.data ?? []).map((post) => {
+        {visiblePosts.length ? (
+          visiblePosts.map((post) => {
             const proof = splitProofBody(post.body);
 
             return (
@@ -262,7 +333,10 @@ export default function CommunityScreen() {
                     <View style={{ alignItems: "center", gap: spacing.xs, width: 44 }}>
                       <Pressable
                         accessibilityRole="button"
-                        onPress={() => voteMutation.mutate({ postId: post.id, value: 1 })}
+                        onPress={(event) => {
+                          event.stopPropagation();
+                          voteMutation.mutate({ postId: post.id, value: 1 });
+                        }}
                       >
                         <ThumbsUp color={colors.moss} size={18} strokeWidth={2.4} />
                       </Pressable>
@@ -313,6 +387,67 @@ export default function CommunityScreen() {
                           댓글 {post.commentCount}
                         </Text>
                       </View>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={(event) => {
+                            event.stopPropagation();
+                            setNotice("");
+                            setReportPostId(reportPostId === post.id ? null : post.id);
+                          }}
+                          style={({ pressed }) => ({
+                            alignItems: "center",
+                            flexDirection: "row",
+                            gap: spacing.xs,
+                            opacity: pressed ? 0.6 : 1,
+                            paddingVertical: spacing.xs
+                          })}
+                        >
+                          <Flag color={colors.mutedInk} size={15} strokeWidth={2.4} />
+                          <Text style={{ color: colors.mutedInk, fontSize: 12, fontWeight: "900" }}>
+                            신고
+                          </Text>
+                        </Pressable>
+                        {post.authorId !== userId ? (
+                          <Pressable
+                            accessibilityRole="button"
+                            onPress={(event) => {
+                              event.stopPropagation();
+                              blockMutation.mutate(post.authorId);
+                            }}
+                            style={({ pressed }) => ({
+                              alignItems: "center",
+                              flexDirection: "row",
+                              gap: spacing.xs,
+                              opacity: pressed ? 0.6 : 1,
+                              paddingVertical: spacing.xs
+                            })}
+                          >
+                            <Ban color={colors.mutedInk} size={15} strokeWidth={2.4} />
+                            <Text
+                              style={{ color: colors.mutedInk, fontSize: 12, fontWeight: "900" }}
+                            >
+                              차단
+                            </Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
+                      {reportPostId === post.id ? (
+                        <View style={{ gap: spacing.sm }}>
+                          <Field
+                            multiline
+                            value={reportReason}
+                            onChangeText={setReportReason}
+                            placeholder="신고 이유를 적어주세요."
+                          />
+                          <SecondaryButton
+                            disabled={reportMutation.isPending}
+                            icon={Send}
+                            label={reportMutation.isPending ? "접수 중" : "신고 접수"}
+                            onPress={() => handleReportPost(post.id)}
+                          />
+                        </View>
+                      ) : null}
                     </View>
                   </View>
                 </AppCard>
@@ -322,7 +457,11 @@ export default function CommunityScreen() {
         ) : (
           <EmptyState
             title="아직 작은 인증이 없습니다."
-            body="첫 인증을 남기면 Better tomorrow 피드가 시작됩니다."
+            body={
+              (postsQuery.data ?? []).length
+                ? "차단한 사용자의 게시물은 표시하지 않습니다."
+                : "첫 인증을 남기면 Better tomorrow 피드가 시작됩니다."
+            }
           />
         )}
       </ScreenSection>

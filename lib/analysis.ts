@@ -12,9 +12,10 @@ import type {
   WeeklyRecommendation
 } from "@/types/domain";
 import { adherenceToLifeHumidity, adherenceToLifeTemperatureScore } from "@/lib/gauge";
+import { localDateKey, monthStart } from "@/lib/date";
+import { differenceInCalendarDays, startOfWeek } from "date-fns";
 
 const round = (value: number) => Math.round(value);
-const dayInMs = 24 * 60 * 60 * 1000;
 
 export function sumMealCalories(entries: MealEntry[]) {
   return entries.reduce((total, entry) => total + entry.calories, 0);
@@ -66,13 +67,18 @@ const stackLabels: Record<LifeStackKey, string> = {
 };
 
 function uniqueDays(entries: LifeEntry[], stack: LifeStackKey) {
-  return new Set(entries.filter((entry) => entry.stack === stack).map((entry) => entry.entryDate))
-    .size;
+  return new Set(
+    entries
+      .filter((entry) => isAnalysisEntry(entry) && entry.stack === stack)
+      .map((entry) => entry.entryDate)
+  ).size;
 }
 
 function averageScore(entries: LifeEntry[], stack: LifeStackKey) {
   const scores = entries
-    .filter((entry) => entry.stack === stack && typeof entry.score === "number")
+    .filter(
+      (entry) => isAnalysisEntry(entry) && entry.stack === stack && typeof entry.score === "number"
+    )
     .map((entry) => entry.score ?? 0);
 
   if (!scores.length) {
@@ -87,21 +93,36 @@ function clamp(value: number, min = 0, max = 100) {
 }
 
 function dateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return localDateKey(date);
+}
+
+function isAnalysisEntry(entry: LifeEntry) {
+  const waterCategories = new Set(["물", "water", "Water", "WATER"]);
+  return !(entry.stack === "recovery" && waterCategories.has(entry.category));
+}
+
+function routineMatchesEntry(routine: LifeRoutine, entry: LifeEntry) {
+  if (!routine.stack || routine.stack !== entry.stack || !isAnalysisEntry(entry)) {
+    return false;
+  }
+
+  const routineTitle = routine.title.replace(/\s+/g, "").toLocaleLowerCase();
+  const category = entry.category.replace(/\s+/g, "").toLocaleLowerCase();
+  const entryTitle = entry.title.replace(/\s+/g, "").toLocaleLowerCase();
+
+  return routineTitle.includes(category) || entryTitle.includes(routineTitle);
 }
 
 function getRoutinePeriodStart(cadence: RoutineCadence, referenceDate: Date) {
   if (cadence === "monthly") {
-    return new Date(Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), 1));
+    return monthStart(referenceDate);
   }
 
-  const start = new Date(referenceDate);
-  start.setUTCDate(referenceDate.getUTCDate() - 6);
-  return start;
+  return startOfWeek(referenceDate, { weekStartsOn: 1 });
 }
 
 function countDaysInclusive(start: Date, end: Date) {
-  return Math.max(1, Math.floor((end.getTime() - start.getTime()) / dayInMs) + 1);
+  return Math.max(1, differenceInCalendarDays(end, start) + 1);
 }
 
 function getRoutineExpectedCount(routine: LifeRoutine, start: Date, end: Date) {
@@ -114,14 +135,14 @@ function getRoutineExpectedCount(routine: LifeRoutine, start: Date, end: Date) {
 
 function buildRoutineMessage(progress: number, actualCount: number, expectedCount: number) {
   if (progress >= 100) {
-    return `기준을 지켰습니다 · ${actualCount}/${expectedCount}`;
+    return `이번 주 기준을 채웠습니다 · ${actualCount}/${expectedCount}`;
   }
 
   if (progress >= 60) {
-    return `조금 흔들렸지만 이어지고 있습니다 · ${actualCount}/${expectedCount}`;
+    return `이번 주 기준에 가까워지고 있습니다 · ${actualCount}/${expectedCount}`;
   }
 
-  return `이번 기간에는 기준이 많이 비어 있습니다 · ${actualCount}/${expectedCount}`;
+  return `이번 주 기준이 아직 비어 있습니다 · ${actualCount}/${expectedCount}`;
 }
 
 function buildRoutineSignals(
@@ -148,7 +169,7 @@ function buildRoutineSignals(
 
       if (routine.stack) {
         entries
-          .filter((entry) => entry.stack === routine.stack && entry.entryDate >= startKey)
+          .filter((entry) => routineMatchesEntry(routine, entry) && entry.entryDate >= startKey)
           .forEach((entry) => completedDates.add(entry.entryDate));
       }
 
@@ -181,9 +202,7 @@ function weightedAverage(signals: RoutineSignal[], key: "temperatureWeight" | "h
   );
 
   if (!weighted.weight) {
-    return signals.length
-      ? round(signals.reduce((total, signal) => total + signal.progress, 0) / signals.length)
-      : 0;
+    return 0;
   }
 
   return round(weighted.score / weighted.weight);
@@ -213,7 +232,7 @@ export function analyzeLifeDirection(
   } = {}
 ): LifeDirectionReport {
   const movementMinutes = entries
-    .filter((entry) => entry.stack === "move")
+    .filter((entry) => isAnalysisEntry(entry) && entry.stack === "move")
     .reduce((total, entry) => total + (entry.durationMinutes ?? 0), 0);
   const mealDays = uniqueDays(entries, "meal");
   const recoveryDays = uniqueDays(entries, "recovery");

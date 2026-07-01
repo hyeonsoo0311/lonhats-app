@@ -10,38 +10,43 @@ The interface should help the user say:
 
 ## First Screen Priority
 
-The first screen should focus on:
+The first screen is a date-led daily dashboard. It should focus on:
 
-1. Life temperature and humidity.
-2. Personal routine completion rate.
-3. Clear daily record entry points: `Meal`, `Move`, `Recovery`, `Mind`, and `Body`.
-4. Today's saved records.
-5. Meal slot status when available.
+1. The current week and today's date.
+2. Life temperature, humidity, and personal routine completion.
+3. Clear daily entry rows for meal, move, recovery, mind, body, and diary.
+4. Today's saved entries.
+
+Water belongs inside meal rhythm, should save as a Meal Stack entry, and should not appear as a
+separate Home row.
+
+The expanded Home calendar should show year controls, all twelve months, the full selected month,
+and compact record signals for days that contain saved entries.
 
 Do not make a marketing-style landing page inside the app.
 
 ## Bottom Navigation
 
-Bottom tabs should remain simple:
+Bottom tabs should remain simple and non-duplicative:
 
-- `홈`
-- `Today`
+- `오늘`
 - `커뮤니티`
-- `일기`
+- `리포트`
+- `마이`
 
-Do not expose `Move`, `Meal`, `Recovery`, `Mind`, or `기준` as bottom tabs. Stack creation happens in Today. The personal 기준 setting is reached from Home.
+Do not expose `Move`, `Meal`, `Recovery`, `Mind`, `Body`, `일기`, or a second generic recording tab as bottom tabs. These flows are reached from the daily dashboard.
 
 ## Visual Direction
 
-The active Lonhats visual direction is minimal, typographic, black-and-white, and editorial.
+The active Lonhats visual direction is a dense, high-contrast, dark graphite recording interface. It should feel like a personal daily instrument rather than a collection of generic cards.
 
 Use:
 
-- White or off-white backgrounds.
-- Black and charcoal typography.
-- Restrained neutral borders.
-- Spacing, text hierarchy, and linework instead of color blocks.
-- Simple cards with minimal radius.
+- Dark graphite backgrounds and elevated neutral surfaces.
+- White and muted-gray typography.
+- Restrained accent colors for category identity and completion state.
+- Compact rows, linework, spacing, and typography to organize information.
+- Simple cards with minimal radius only when a section needs a boundary.
 
 Avoid:
 
@@ -49,6 +54,7 @@ Avoid:
 - Cute or playful category colors.
 - Generic habit-app softness.
 - Color-coded productivity pressure.
+- A separate card for every small action.
 
 ## Recording UI
 
@@ -57,11 +63,21 @@ Recording should be fast.
 Rules:
 
 - Use stack-specific screens.
-- Keep primary fields visible and simple.
-- Put detailed fields after the core record fields.
+- Put today's saved items before the entry form.
+- Keep primary fields visible, labeled, and simple.
+- Put detailed fields in an explicit optional section after the core fields.
 - Make details optional.
 - Keep the meaning field prominent.
 - Avoid long forms that feel like tax documents.
+- Meal entry should make meal type, fullness, score, time, multi-food composition, amount, source,
+  and nutrition preview understandable.
+- Meal search results should disclose a readable source and serving basis before the user adds them.
+- Food sources should read like `가정식 실제 분석값` or `외식 재료량 산출값`, not raw database
+  codes.
+- Approved community food results should credit the contributor's Lonhats nickname without turning
+  contribution into a ranking.
+- Incorrect food data should be reportable from the selected-food state.
+- Move entry should make title, start time, duration, content, type, intensity, and optional activity-specific details understandable.
 
 Primary action wording:
 
@@ -164,3 +180,12 @@ Be careful with:
 - Productivity scores.
 
 These can exist only as supporting references.
+
+When users define personal metric meanings, explain what changes the metric and what only changes
+the interpretation. Example text should appear as placeholder guidance, not prefilled copy that
+looks like the app has already decided the user's meaning.
+
+Routine criteria guidance should be concrete before it is emotional. Ask users to write criteria as
+`behavior + period + number`, such as going to the gym 3 times a week or sleeping at least 6 hours
+each day. If the current MVP evaluates weekly progress, daily and monthly goals should be explained
+as weekly check-in counts or weekly action units.

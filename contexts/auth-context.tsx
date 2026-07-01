@@ -21,11 +21,26 @@ type AuthContextValue = {
   isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (input: { email: string; password: string; displayName: string }) => Promise<string>;
+  resetPassword: (email: string) => Promise<string>;
+  updatePassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+function authParamsFromUrl(url: string) {
+  const hash = url.includes("#") ? url.split("#")[1] : "";
+  const query = url.includes("?") ? url.split("?")[1]?.split("#")[0] : "";
+  const params = new URLSearchParams(hash || query || "");
+
+  return {
+    accessToken: params.get("access_token"),
+    refreshToken: params.get("refresh_token"),
+    errorCode: params.get("error_code"),
+    errorDescription: params.get("error_description")
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(Boolean(supabase));
@@ -43,6 +58,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const nextProfile = await getProfile(nextSession.user.id);
     setProfile(nextProfile);
   }, []);
+
+  const createSessionFromUrl = useCallback(
+    async (url: string | null) => {
+      if (!supabase || !url) {
+        return;
+      }
+
+      const { accessToken, errorCode, errorDescription, refreshToken } = authParamsFromUrl(url);
+
+      if (errorCode) {
+        throw new Error(errorDescription ?? errorCode);
+      }
+
+      if (!accessToken || !refreshToken) {
+        return;
+      }
+
+      const { data, error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setSession(data.session);
+      await refreshProfileForSession(data.session);
+    },
+    [refreshProfileForSession]
+  );
 
   useEffect(() => {
     if (!supabase) {
@@ -66,11 +112,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshProfileForSession(nextSession).catch(() => setProfile(null));
     });
 
+    Linking.getInitialURL()
+      .then((url) => createSessionFromUrl(url))
+      .catch(() => undefined);
+
+    const linkingSubscription = Linking.addEventListener("url", ({ url }) => {
+      createSessionFromUrl(url).catch(() => undefined);
+    });
+
     return () => {
       mounted = false;
       data.subscription.unsubscribe();
+      linkingSubscription.remove();
     };
-  }, [refreshProfileForSession]);
+  }, [createSessionFromUrl, refreshProfileForSession]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -116,6 +171,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return data.session
           ? "회원가입이 완료되었습니다."
           : "인증 메일을 보냈습니다. 이메일 인증 후 로그인해주세요.";
+      },
+      async resetPassword(email) {
+        if (!supabase) {
+          throw new Error("Supabase 환경 변수가 설정되지 않았습니다.");
+        }
+
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: Linking.createURL("/reset-password")
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        return "비밀번호 재설정 메일을 보냈습니다.";
+      },
+      async updatePassword(password) {
+        if (!supabase) {
+          throw new Error("Supabase 환경 변수가 설정되지 않았습니다.");
+        }
+
+        const { error } = await supabase.auth.updateUser({ password });
+
+        if (error) {
+          throw error;
+        }
       },
       async signOut() {
         if (!supabase) {

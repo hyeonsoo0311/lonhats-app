@@ -1,5 +1,6 @@
 import { analyzeLifeDirection, analyzeWeek, sumMealCalories } from "@/lib/analysis";
 import { buildProofTitle, formatLifeEntryProofSummary } from "@/lib/community";
+import { scoreToLifeTemperature } from "@/lib/gauge";
 import type {
   DaySummary,
   LifeEntry,
@@ -74,7 +75,7 @@ describe("analysis helpers", () => {
     expect(report.signals.find((signal) => signal.stack === "move")?.score).toBe(100);
   });
 
-  it("uses personal routine criteria when routines exist", () => {
+  it("does not treat every entry in a stack as the same personal routine", () => {
     const entries: LifeEntry[] = [
       lifeEntry("move", "2026-06-01", { durationMinutes: 30 }),
       lifeEntry("move", "2026-06-03", { durationMinutes: 30 })
@@ -113,9 +114,64 @@ describe("analysis helpers", () => {
     });
 
     expect(report.hasRoutineCriteria).toBe(true);
-    expect(report.routineScore).toBe(100);
-    expect(report.routineSignals[0]?.actualCount).toBe(3);
-    expect(report.message).toContain("내가 정한 기준");
+    expect(report.routineScore).toBe(33);
+    expect(report.routineSignals[0]?.actualCount).toBe(1);
+  });
+
+  it("does not raise humidity from temperature-only routine weights", () => {
+    const routines: LifeRoutine[] = [
+      {
+        id: "routine-move",
+        userId: "user-1",
+        title: "주 1회 운동",
+        stack: "move",
+        cadence: "weekly",
+        targetCount: 1,
+        temperatureWeight: 3,
+        humidityWeight: 0,
+        isActive: true,
+        createdAt: "2026-06-01T00:00:00.000Z",
+        updatedAt: "2026-06-01T00:00:00.000Z"
+      }
+    ];
+    const checkins: RoutineCheckin[] = [
+      {
+        id: "checkin-1",
+        routineId: "routine-move",
+        userId: "user-1",
+        checkedOn: "2026-06-05",
+        completed: true,
+        note: null,
+        createdAt: "2026-06-05T00:00:00.000Z"
+      }
+    ];
+
+    const report = analyzeLifeDirection([], {
+      routines,
+      routineCheckins: checkins,
+      referenceDate: new Date("2026-06-07T00:00:00.000Z")
+    });
+
+    expect(scoreToLifeTemperature(report.temperature)).toBe(25);
+    expect(report.humidity).toBe(34);
+  });
+
+  it("excludes water quick logs from recovery analysis", () => {
+    const entries: LifeEntry[] = [
+      lifeEntry("recovery", "2026-06-01", { category: "물", score: 100 }),
+      lifeEntry("recovery", "2026-06-02", { category: "물", score: 100 })
+    ];
+
+    const report = analyzeLifeDirection(entries);
+
+    expect(report.recoveryDays).toBe(0);
+    expect(report.signals.find((signal) => signal.stack === "recovery")?.score).toBe(0);
+  });
+
+  it("maps life temperature score into the app-defined 15-25 degree comfort range", () => {
+    expect(scoreToLifeTemperature(0)).toBe(10);
+    expect(scoreToLifeTemperature(50)).toBe(17.5);
+    expect(scoreToLifeTemperature(100)).toBe(25);
   });
 
   it("formats small proof community text", () => {

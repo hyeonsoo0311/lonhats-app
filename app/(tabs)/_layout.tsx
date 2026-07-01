@@ -1,18 +1,7 @@
 import { LoadingState } from "@/components/ui";
 import { colors } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
-import {
-  ChartNoAxesColumn,
-  Footprints,
-  House,
-  MessageCircle,
-  Moon,
-  NotebookPen,
-  Plus,
-  SlidersHorizontal,
-  UserRound,
-  Utensils
-} from "lucide-react-native";
+import { ChartNoAxesColumn, House, MessageCircle, SlidersHorizontal } from "lucide-react-native";
 import { Redirect, Tabs } from "expo-router";
 import type { ColorValue } from "react-native";
 
@@ -42,88 +31,71 @@ export default function TabLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: colors.canvas },
         headerTitleStyle: { color: colors.ink, fontWeight: "900" },
-        tabBarActiveTintColor: colors.moss,
+        tabBarActiveTintColor: colors.ink,
         tabBarInactiveTintColor: colors.mutedInk,
         tabBarStyle: {
           backgroundColor: colors.paper,
           borderTopColor: colors.line,
-          minHeight: 64,
-          paddingTop: 6
+          minHeight: 70,
+          paddingBottom: 8,
+          paddingTop: 8
         }
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: "홈", tabBarLabel: "홈", tabBarIcon: createTabIcon(House) }}
+        options={{ title: "오늘", tabBarLabel: "오늘", tabBarIcon: createTabIcon(House) }}
       />
-      <Tabs.Screen
-        name="today"
-        options={{ title: "Today", tabBarLabel: "Today", tabBarIcon: createTabIcon(Plus) }}
-      />
+      <Tabs.Screen name="today" options={{ href: null, title: "Today" }} />
       <Tabs.Screen
         name="train"
         options={{
           href: null,
-          title: "Move",
-          tabBarLabel: "Move",
-          tabBarIcon: createTabIcon(Footprints)
+          title: "운동"
         }}
       />
       <Tabs.Screen
         name="fuel"
         options={{
           href: null,
-          title: "Meal",
-          tabBarLabel: "Meal",
-          tabBarIcon: createTabIcon(Utensils)
+          title: "식단"
         }}
       />
       <Tabs.Screen
         name="recovery"
         options={{
           href: null,
-          title: "Recovery",
-          tabBarLabel: "Recovery",
-          tabBarIcon: createTabIcon(Moon)
+          title: "회복"
         }}
       />
       <Tabs.Screen
         name="reflect"
         options={{
           href: null,
-          title: "Mind",
-          tabBarLabel: "Mind",
-          tabBarIcon: createTabIcon(NotebookPen)
+          title: "마음"
         }}
       />
       <Tabs.Screen
         name="body"
         options={{
           href: null,
-          title: "Body",
-          tabBarLabel: "Body",
-          tabBarIcon: createTabIcon(UserRound)
+          title: "신체"
         }}
       />
-      <Tabs.Screen
-        name="diary"
-        options={{ title: "일기", tabBarLabel: "일기", tabBarIcon: createTabIcon(NotebookPen) }}
-      />
+      <Tabs.Screen name="diary" options={{ href: null, title: "일기" }} />
       <Tabs.Screen
         name="criteria"
         options={{
-          href: null,
-          title: "나의 기준",
-          tabBarLabel: "기준",
+          title: "마이",
+          tabBarLabel: "마이",
           tabBarIcon: createTabIcon(SlidersHorizontal)
         }}
       />
       <Tabs.Screen
         name="insights"
         options={{
-          href: null,
-          title: "Report",
-          tabBarLabel: "Report",
+          title: "리포트",
+          tabBarLabel: "리포트",
           tabBarIcon: createTabIcon(ChartNoAxesColumn)
         }}
       />

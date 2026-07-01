@@ -8,15 +8,16 @@ import { useEffect } from "react";
 
 export default function RootLayout() {
   useEffect(() => {
-    SystemUI.setBackgroundColorAsync("#F5F1E8");
+    SystemUI.setBackgroundColorAsync("#0D0E13");
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <StatusBar style="dark" />
+        <StatusBar style="light" />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="sign-in" />
+          <Stack.Screen name="reset-password" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="post/[postId]" />
         </Stack>

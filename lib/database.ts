@@ -1,6 +1,8 @@
 import { supabase } from "@/lib/supabase";
 import { defaultGaugeCriteria } from "@/lib/gauge";
+import { calendarWeekStartKey, localDateKey, rollingWindowStartKey } from "@/lib/date";
 import type {
+  AccountDeletionRequest,
   AppNotice,
   BodyLog,
   CommunityComment,
@@ -10,6 +12,7 @@ import type {
   DaySummary,
   ExerciseActivity,
   FoodItem,
+  FoodSubmission,
   GoalMode,
   JournalEntry,
   LifeGaugeCriteria,
@@ -25,6 +28,19 @@ import type {
 } from "@/types/domain";
 
 type DbRecord = Record<string, any>;
+type LifeEntryInput = {
+  stack: LifeStackKey;
+  category: string;
+  title: string;
+  durationMinutes?: number | null;
+  intensity?: LifeIntensity | null;
+  meaning?: string | null;
+  note?: string | null;
+  score?: number | null;
+  details?: Record<string, unknown>;
+};
+type WorkoutLogInput = Omit<WorkoutLog, "id" | "sourceLifeEntryId" | "trainedOn">;
+type MealLogInput = Omit<MealLog, "id" | "sourceLifeEntryId" | "eatenOn">;
 
 function requireSupabase() {
   if (!supabase) {
@@ -35,21 +51,15 @@ function requireSupabase() {
 }
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateKey();
 }
 
 function weekStartDate() {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(end.getDate() - 6);
-  return start.toISOString().slice(0, 10);
+  return calendarWeekStartKey();
 }
 
 function routineWindowStartDate() {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(end.getDate() - 40);
-  return start.toISOString().slice(0, 10);
+  return rollingWindowStartKey(41);
 }
 
 function toProfile(row: DbRecord): Profile {
@@ -68,6 +78,7 @@ function toProfile(row: DbRecord): Profile {
 function toWorkoutLog(row: DbRecord): WorkoutLog {
   return {
     id: row.id,
+    sourceLifeEntryId: row.source_life_entry_id ?? null,
     exerciseId: row.exercise_id ?? null,
     exerciseName: row.exercise_name,
     exerciseCategory: row.exercise_category ?? null,
@@ -101,6 +112,7 @@ function toExerciseActivity(row: DbRecord): ExerciseActivity {
 function toMealLog(row: DbRecord): MealLog {
   return {
     id: row.id,
+    sourceLifeEntryId: row.source_life_entry_id ?? null,
     eatenOn: row.eaten_on,
     mealType: row.meal_type ?? "식사",
     rawText: row.raw_text ?? "",
@@ -148,8 +160,27 @@ function toFoodItem(row: DbRecord): FoodItem {
     proteinGram: Number(row.protein_gram ?? 0),
     carbsGram: Number(row.carbs_gram ?? 0),
     fatGram: Number(row.fat_gram ?? 0),
-    source: row.source ?? "seed",
-    sourceId: row.source_id ?? null
+    source: row.source,
+    sourceId: row.source_id ?? null,
+    sourceReference: row.source_reference ?? null,
+    contributorDisplayName: row.contributor_display_name ?? null
+  };
+}
+
+function toFoodSubmission(row: DbRecord): FoodSubmission {
+  return {
+    id: row.id,
+    contributorDisplayName: row.contributor_display_name ?? "Lonhats 사용자",
+    name: row.name,
+    brandName: row.brand_name ?? null,
+    servingGram: Number(row.serving_gram ?? 100),
+    caloriesPerServing: Number(row.calories_per_serving ?? 0),
+    proteinGram: Number(row.protein_gram ?? 0),
+    carbsGram: Number(row.carbs_gram ?? 0),
+    fatGram: Number(row.fat_gram ?? 0),
+    referenceNote: row.reference_note ?? null,
+    status: row.status ?? "pending",
+    createdAt: row.created_at
   };
 }
 
@@ -190,6 +221,16 @@ function toComment(row: DbRecord): CommunityComment {
     authorId: row.user_id,
     authorName: row.author_display_name ?? null,
     createdAt: row.created_at
+  };
+}
+
+function toAccountDeletionRequest(row: DbRecord): AccountDeletionRequest {
+  return {
+    id: row.id,
+    status: row.status ?? "open",
+    reason: row.reason ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
   };
 }
 
@@ -324,19 +365,27 @@ export async function getWeeklyLifeEntries(userId: string) {
   return (data ?? []).map(toLifeEntry);
 }
 
+export async function getLifeEntriesInRange(userId: string, startDate: string, endDate: string) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("life_entries")
+    .select("*")
+    .eq("user_id", userId)
+    .gte("entry_date", startDate)
+    .lte("entry_date", endDate)
+    .order("entry_date", { ascending: true })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(toLifeEntry);
+}
+
 export async function createLifeEntry(
   userId: string,
-  input: {
-    stack: LifeStackKey;
-    category: string;
-    title: string;
-    durationMinutes?: number | null;
-    intensity?: LifeIntensity | null;
-    meaning?: string | null;
-    note?: string | null;
-    score?: number | null;
-    details?: Record<string, unknown>;
-  }
+  input: LifeEntryInput & { stack: "recovery" | "mind" }
 ) {
   const client = requireSupabase();
   const { data, error } = await client
@@ -362,6 +411,120 @@ export async function createLifeEntry(
   }
 
   return toLifeEntry(data);
+}
+
+export async function createMealWaterEntry(userId: string, amountMl: number) {
+  const client = requireSupabase();
+  const safeAmountMl = Math.min(Math.max(Math.round(amountMl), 1), 5000);
+  const { data, error } = await client
+    .from("life_entries")
+    .insert({
+      user_id: userId,
+      stack: "meal",
+      category: "물",
+      title: `물 ${safeAmountMl}mL`,
+      entry_date: today(),
+      duration_minutes: null,
+      intensity: null,
+      meaning: null,
+      note: null,
+      score: null,
+      details: { amountMl: safeAmountMl, kind: "water" }
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return toLifeEntry(data);
+}
+
+function lifeEntryRpcInput(input: LifeEntryInput) {
+  return {
+    category: input.category,
+    title: input.title,
+    entry_date: today(),
+    duration_minutes: input.durationMinutes ?? null,
+    intensity: input.intensity ?? null,
+    meaning: input.meaning ?? null,
+    note: input.note ?? null,
+    score: input.score ?? null,
+    details: input.details ?? {}
+  };
+}
+
+export async function createMealWithLifeEntry(
+  userId: string,
+  lifeInput: Omit<LifeEntryInput, "stack">,
+  mealInputs: MealLogInput[]
+) {
+  const client = requireSupabase();
+  const { data, error } = await client.rpc("create_meal_with_life_entry", {
+    p_user_id: userId,
+    p_life: lifeEntryRpcInput({ ...lifeInput, stack: "meal" }),
+    p_meal: mealInputs.map((mealInput) => ({
+      eaten_on: today(),
+      meal_type: mealInput.mealType,
+      raw_text: mealInput.rawText,
+      food_name: mealInput.foodName,
+      amount_gram: mealInput.amountGram,
+      calories: mealInput.calories,
+      protein_gram: mealInput.proteinGram,
+      carbs_gram: mealInput.carbsGram,
+      fat_gram: mealInput.fatGram,
+      source: mealInput.source,
+      source_id: mealInput.sourceId,
+      confidence: mealInput.confidence
+    }))
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const result = data as DbRecord;
+  return {
+    lifeEntry: toLifeEntry(result.life_entry),
+    mealLogs: ((result.meal_logs ?? []) as DbRecord[]).map(toMealLog)
+  };
+}
+
+export async function createWorkoutWithLifeEntry(
+  userId: string,
+  lifeInput: Omit<LifeEntryInput, "stack">,
+  workoutInput: WorkoutLogInput
+) {
+  const client = requireSupabase();
+  const { data, error } = await client.rpc("create_workout_with_life_entry", {
+    p_user_id: userId,
+    p_life: lifeEntryRpcInput({ ...lifeInput, stack: "move" }),
+    p_workout: {
+      trained_on: today(),
+      exercise_id: workoutInput.exerciseId,
+      exercise_name: workoutInput.exerciseName,
+      exercise_category: workoutInput.exerciseCategory,
+      minutes: workoutInput.minutes,
+      set_count: workoutInput.setCount,
+      reps: workoutInput.reps,
+      load_kg: workoutInput.loadKg,
+      met_value: workoutInput.metValue,
+      estimated_calories: workoutInput.estimatedCalories,
+      body_weight_kg: workoutInput.bodyWeightKg,
+      memo: workoutInput.memo
+    }
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const result = data as DbRecord;
+  return {
+    lifeEntry: toLifeEntry(result.life_entry),
+    workoutLog: toWorkoutLog(result.workout_log)
+  };
 }
 
 export async function getLifeGaugeCriteria(userId: string) {
@@ -569,50 +732,6 @@ export async function getExerciseCatalog() {
   return (data ?? []).map(toExerciseActivity);
 }
 
-export async function createWorkoutLog(
-  userId: string,
-  input: {
-    exerciseId?: string | null;
-    exerciseName: string;
-    exerciseCategory?: string | null;
-    minutes?: number | null;
-    setCount?: number | null;
-    reps?: number | null;
-    loadKg?: number | null;
-    metValue?: number | null;
-    estimatedCalories?: number | null;
-    bodyWeightKg?: number | null;
-    memo?: string | null;
-  }
-) {
-  const client = requireSupabase();
-  const { data, error } = await client
-    .from("workout_logs")
-    .insert({
-      user_id: userId,
-      exercise_id: input.exerciseId,
-      exercise_name: input.exerciseName,
-      exercise_category: input.exerciseCategory,
-      trained_on: today(),
-      minutes: input.minutes,
-      set_count: input.setCount,
-      reps: input.reps,
-      load_kg: input.loadKg,
-      met_value: input.metValue,
-      estimated_calories: input.estimatedCalories,
-      body_weight_kg: input.bodyWeightKg,
-      memo: input.memo
-    })
-    .select("*")
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  return toWorkoutLog(data);
-}
-
 export async function getTodayMealLogs(userId: string) {
   const client = requireSupabase();
   const { data, error } = await client
@@ -627,35 +746,6 @@ export async function getTodayMealLogs(userId: string) {
   }
 
   return (data ?? []).map(toMealLog);
-}
-
-export async function createMealLog(userId: string, input: Omit<MealLog, "id" | "eatenOn">) {
-  const client = requireSupabase();
-  const { data, error } = await client
-    .from("meal_logs")
-    .insert({
-      user_id: userId,
-      eaten_on: today(),
-      meal_type: input.mealType,
-      raw_text: input.rawText,
-      food_name: input.foodName,
-      amount_gram: input.amountGram,
-      calories: input.calories,
-      protein_gram: input.proteinGram,
-      carbs_gram: input.carbsGram,
-      fat_gram: input.fatGram,
-      source: input.source,
-      source_id: input.sourceId,
-      confidence: input.confidence
-    })
-    .select("*")
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  return toMealLog(data);
 }
 
 export async function getTodayBodyLogs(userId: string) {
@@ -741,6 +831,7 @@ export async function searchFoodItems(query: string) {
   const { data, error } = await client
     .from("food_items")
     .select("*")
+    .eq("source", "community-approved")
     .or(`name.ilike.%${normalized}%,brand_name.ilike.%${normalized}%`)
     .limit(8);
 
@@ -749,6 +840,90 @@ export async function searchFoodItems(query: string) {
   }
 
   return (data ?? []).map(toFoodItem);
+}
+
+export async function createFoodSubmission(
+  userId: string,
+  input: {
+    name: string;
+    brandName?: string | null;
+    servingGram: number;
+    caloriesPerServing: number;
+    proteinGram: number;
+    carbsGram: number;
+    fatGram: number;
+    referenceNote?: string | null;
+  }
+) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("food_submissions")
+    .insert({
+      user_id: userId,
+      name: input.name,
+      brand_name: input.brandName ?? null,
+      serving_gram: input.servingGram,
+      calories_per_serving: input.caloriesPerServing,
+      protein_gram: input.proteinGram,
+      carbs_gram: input.carbsGram,
+      fat_gram: input.fatGram,
+      reference_note: input.referenceNote ?? null
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return toFoodSubmission(data);
+}
+
+export async function createFoodReport(
+  userId: string,
+  food: Pick<FoodItem, "name" | "source" | "sourceId">,
+  reason: string
+) {
+  const client = requireSupabase();
+  const { error } = await client.from("food_reports").insert({
+    user_id: userId,
+    food_name: food.name,
+    food_source: food.source,
+    food_source_id: food.sourceId,
+    reason
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function createUserFeedback(
+  userId: string,
+  input: { category: string; body: string }
+) {
+  const client = requireSupabase();
+  const body = input.body.trim();
+
+  if (!body) {
+    throw new Error("피드백 내용을 입력해주세요.");
+  }
+
+  const { data, error } = await client
+    .from("user_feedback")
+    .insert({
+      user_id: userId,
+      category: input.category,
+      body
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data.id as string;
 }
 
 export async function getJournalEntries(userId: string) {
@@ -808,6 +983,20 @@ export async function getCommunityPosts() {
   }
 
   return (data ?? []).map(toPost);
+}
+
+export async function getCommunityBlockedUserIds(userId: string) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("community_user_blocks")
+    .select("blocked_user_id")
+    .eq("blocker_id", userId);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => String(row.blocked_user_id));
 }
 
 export async function getCommunityPost(postId: string) {
@@ -880,6 +1069,70 @@ export async function voteCommunityPost(userId: string, postId: string, value: 1
   }
 }
 
+export async function reportCommunityContent(
+  userId: string,
+  input: { postId?: string | null; commentId?: string | null; reason: string }
+) {
+  const client = requireSupabase();
+
+  if (!input.postId && !input.commentId) {
+    throw new Error("신고할 게시물 또는 댓글을 선택해주세요.");
+  }
+
+  if (!input.reason.trim()) {
+    throw new Error("신고 이유를 입력해주세요.");
+  }
+
+  const { error } = await client.from("community_reports").insert({
+    reporter_id: userId,
+    post_id: input.postId ?? null,
+    comment_id: input.commentId ?? null,
+    reason: input.reason.trim()
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function blockCommunityUser(
+  userId: string,
+  blockedUserId: string,
+  reason?: string | null
+) {
+  const client = requireSupabase();
+
+  if (userId === blockedUserId) {
+    throw new Error("자기 자신은 차단할 수 없습니다.");
+  }
+
+  const { error } = await client.from("community_user_blocks").upsert(
+    {
+      blocker_id: userId,
+      blocked_user_id: blockedUserId,
+      reason: reason ?? null
+    },
+    { onConflict: "blocker_id,blocked_user_id" }
+  );
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function unblockCommunityUser(userId: string, blockedUserId: string) {
+  const client = requireSupabase();
+  const { error } = await client
+    .from("community_user_blocks")
+    .delete()
+    .eq("blocker_id", userId)
+    .eq("blocked_user_id", blockedUserId);
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function getCommunityComments(postId: string) {
   const client = requireSupabase();
   const { data, error } = await client
@@ -919,6 +1172,50 @@ export async function createCommunityComment(
   return toComment(data);
 }
 
+export async function getActiveAccountDeletionRequest(userId: string) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("account_deletion_requests")
+    .select("*")
+    .eq("user_id", userId)
+    .in("status", ["open", "reviewing"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ? toAccountDeletionRequest(data) : null;
+}
+
+export async function requestAccountDeletion(
+  userId: string,
+  input: { email?: string | null; reason?: string | null }
+) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from("account_deletion_requests")
+    .insert({
+      user_id: userId,
+      requester_email: input.email ?? null,
+      reason: input.reason?.trim() || null
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error("이미 처리 대기 중인 계정 삭제 요청이 있습니다.");
+    }
+
+    throw error;
+  }
+
+  return toAccountDeletionRequest(data);
+}
+
 export async function getAppNotices() {
   const client = requireSupabase();
   const { data, error } = await client
@@ -947,7 +1244,7 @@ export async function getWeeklyDaySummaries(userId: string): Promise<DaySummary[
   const end = new Date();
   const start = new Date();
   start.setDate(end.getDate() - 6);
-  const startDate = start.toISOString().slice(0, 10);
+  const startDate = localDateKey(start);
 
   const [mealsResult, workoutsResult] = await Promise.all([
     client
@@ -973,7 +1270,7 @@ export async function getWeeklyDaySummaries(userId: string): Promise<DaySummary[
   return Array.from({ length: 7 }).map((_, index) => {
     const date = new Date(start);
     date.setDate(start.getDate() + index);
-    const key = date.toISOString().slice(0, 10);
+    const key = localDateKey(date);
     const caloriesIn = (mealsResult.data ?? [])
       .filter((meal) => meal.eaten_on === key)
       .reduce((sum, meal) => sum + Number(meal.calories ?? 0), 0);
